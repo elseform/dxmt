@@ -106,8 +106,8 @@ public:
     if (!ppSwapChain || !pDesc || !hWnd || !pDevice)
       return DXGI_ERROR_INVALID_CALL;
 
-    Com<IMTLDXGIDevice> metal_dxgi_device;
-    if (FAILED(pDevice->QueryInterface(IID_PPV_ARGS(&metal_dxgi_device)))) {
+    Com<IMTLSwapChainFactory> swapchain_factory;
+    if (FAILED(pDevice->QueryInterface(IID_PPV_ARGS(&swapchain_factory)))) {
       ERR("Unsupported device type");
       return DXGI_ERROR_UNSUPPORTED;
     }
@@ -131,7 +131,7 @@ public:
       fsDesc.Windowed = TRUE;
     }
 
-    return metal_dxgi_device->CreateSwapChain(this, hWnd, &desc, &fsDesc,
+    return swapchain_factory->CreateSwapChain(this, hWnd, &desc, &fsDesc,
                                               ppSwapChain);
   }
 
