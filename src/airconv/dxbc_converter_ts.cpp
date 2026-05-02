@@ -242,11 +242,8 @@ convert_dxbc_vertex_hull_shader(
     }
   }
 
-  setup_binding_table(
-      &vertex_shader_info, resource_map_vs, func_signature, module, SM50_BINDING_INDEX_CONSTANT_BUFFER2,
-      SM50_BINDING_INDEX_ARGUMENT_TABLE2
-  );
-  setup_binding_table(&hull_shader_info, resource_map_hs, func_signature, module);
+  auto binding_map = setup_binding_table2(&vertex_shader_info, func_signature, module, SM50_BINDING_INDEX_CONSTANT_BUFFER2, SM50_BINDING_INDEX_ARGUMENT_TABLE2);
+  auto binding_map_hs = setup_binding_table2(&hull_shader_info, func_signature, module);
 
   uint32_t threads_per_patch = next_pow2(pHullStage->hull_maximum_threads_per_patch);
   uint32_t patch_per_group = next_pow2(32 / threads_per_patch);
@@ -409,6 +406,7 @@ convert_dxbc_vertex_hull_shader(
     struct context ctx {
         .builder = builder,
         .air = air,
+        .binding = *binding_map,
         .llvm = context,
         .module = module,
         .function = function,
@@ -584,6 +582,7 @@ convert_dxbc_vertex_hull_shader(
     struct context ctx {
         .builder = builder,
         .air = air,
+        .binding = *binding_map_hs,
         .llvm = context,
         .module = module,
         .function = function,
@@ -759,7 +758,7 @@ convert_dxbc_tesselator_domain_shader(
 
   auto &ds_output_handlers = pShaderInternal->mesh_output_handlers;
 
-  setup_binding_table(shader_info, resource_map, func_signature, module);
+  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
 
   uint32_t rta_idx_out = ~0u;
   if (gs_passthrough && gs_passthrough->Data.RenderTargetArrayIndexReg != 255) {
@@ -874,6 +873,7 @@ convert_dxbc_tesselator_domain_shader(
   struct context ctx {
       .builder = builder,
       .air = air,
+      .binding = *binding_map,
       .llvm = context,
       .module = module,
       .function = function,

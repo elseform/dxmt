@@ -3,6 +3,7 @@ airconv_src = files([
  'air_type.cpp',
  'air_signature.cpp',
  'air_operations.cpp',
+ 'dxbc_binding_sm50.cpp',
  'dxbc_converter.cpp',
  'dxbc_converter_gs.cpp',
  'dxbc_converter_ts.cpp',

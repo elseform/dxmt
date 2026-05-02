@@ -133,7 +133,7 @@ convert_dxbc_geometry_shader(
   }
   auto& gs_output_handlers = pShaderInternal->mesh_output_handlers;
 
-  setup_binding_table(shader_info, resource_map, func_signature, module);
+  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
 
   auto gs_output_topology = pShaderInternal->gs_output_topology;
   int32_t max_vertex_out = pShaderInternal->gs_max_vertex_output;
@@ -472,9 +472,18 @@ convert_dxbc_geometry_shader(
     }
   }
 
-  struct context ctx {
-    .builder = builder, .air = air, .llvm = context, .module = module, .function = function, .resource = resource_map,
-    .types = types, .pso_sample_mask = 0xffffffff, .shader_type = pShaderInternal->shader_type, .metal_version = metal_version,
+  struct context ctx{
+      .builder = builder,
+      .air = air,
+      .binding = *binding_map,
+      .llvm = context,
+      .module = module,
+      .function = function,
+      .resource = resource_map,
+      .types = types,
+      .pso_sample_mask = 0xffffffff,
+      .shader_type = pShaderInternal->shader_type,
+      .metal_version = metal_version,
   };
 
   if (auto err = prologue.build(ctx).takeError()) {
@@ -552,7 +561,7 @@ convert_dxbc_vertex_for_geometry_shader(
     }
   }
 
-  setup_binding_table(shader_info, resource_map, func_signature, module);
+  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
 
   uint32_t payload_idx = func_signature.DefineInput(air::InputPayload{.size = 16256});
   // (warp_size, 1, 1)
@@ -666,9 +675,18 @@ convert_dxbc_vertex_for_geometry_shader(
   setup_temp_register(shader_info, resource_map, types, module, builder);
   setup_immediate_constant_buffer(shader_info, resource_map, types, module, builder);
 
-  struct context ctx {
-    .builder = builder, .air = air, .llvm = context, .module = module, .function = function, .resource = resource_map,
-    .types = types, .pso_sample_mask = 0xffffffff, .shader_type = pShaderInternal->shader_type, .metal_version = metal_version,
+  struct context ctx{
+      .builder = builder,
+      .air = air,
+      .binding = *binding_map,
+      .llvm = context,
+      .module = module,
+      .function = function,
+      .resource = resource_map,
+      .types = types,
+      .pso_sample_mask = 0xffffffff,
+      .shader_type = pShaderInternal->shader_type,
+      .metal_version = metal_version,
   };
 
   auto global_index_id =

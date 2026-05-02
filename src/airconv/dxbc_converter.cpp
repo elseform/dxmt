@@ -94,176 +94,6 @@ uint32_t next_pow2(uint32_t x) {
   return x == 1 ? 1 : 1 << (32 - __builtin_clz(x - 1));
 }
 
-auto get_item_in_argbuf_binding_table(uint32_t argbuf_index, uint32_t index) {
-  return make_irvalue([=](context ctx) {
-    auto argbuf = ctx.function->getArg(argbuf_index);
-    auto argbuf_struct_type = llvm::cast<llvm::StructType>(
-      llvm::cast<llvm::PointerType>(argbuf->getType())
-        ->getNonOpaquePointerElementType()
-    );
-    return ctx.builder.CreateLoad(
-      argbuf_struct_type->getElementType(index),
-      ctx.builder.CreateStructGEP(
-        llvm::cast<llvm::PointerType>(argbuf->getType())
-          ->getNonOpaquePointerElementType(),
-        argbuf, index
-      )
-    );
-  });
-};
-
-void setup_binding_table(
-  const ShaderInfo *shader_info, io_binding_map &resource_map,
-  air::FunctionSignatureBuilder &func_signature, llvm::Module &module,
-  uint32_t argbuffer_constant_slot, uint32_t argbuffer_slot
-) {
-  uint32_t binding_table_index = ~0u;
-  uint32_t cbuf_table_index = ~0u;
-  if (!shader_info->binding_table.Empty()) {
-    auto [type, metadata] = shader_info->binding_table.Build(
-      module.getContext(), module.getDataLayout()
-    );
-    std::string arg_name = "binding_table";
-    if (argbuffer_slot != SM50_BINDING_INDEX_ARGUMENT_TABLE)
-      arg_name += std::to_string(argbuffer_slot);
-    binding_table_index =
-      func_signature.DefineInput(air::ArgumentBindingIndirectBuffer{
-        .location_index = argbuffer_slot,
-        .array_size = 1,
-        .memory_access = air::MemoryAccess::read,
-        .address_space = air::AddressSpace::constant,
-        .struct_type = type,
-        .struct_type_info = metadata,
-        .arg_name = arg_name,
-      });
-  }
-  if (!shader_info->binding_table_cbuffer.Empty()) {
-    auto [type, metadata] = shader_info->binding_table_cbuffer.Build(
-      module.getContext(), module.getDataLayout()
-    );
-    std::string arg_name = "cbuffer_table";
-    if (argbuffer_constant_slot != SM50_BINDING_INDEX_CONSTANT_BUFFER)
-      arg_name += std::to_string(argbuffer_constant_slot);
-    cbuf_table_index =
-      func_signature.DefineInput(air::ArgumentBindingIndirectBuffer{
-        .location_index = argbuffer_constant_slot,
-        .array_size = 1,
-        .memory_access = air::MemoryAccess::read,
-        .address_space = air::AddressSpace::constant,
-        .struct_type = type,
-        .struct_type_info = metadata,
-        .arg_name = arg_name,
-      });
-  }
-
-  for (auto &[range_id, cbv] : shader_info->cbufferMap) {
-    // TODO: abstract SM 5.0 binding
-    auto index = cbv.arg_index;
-    resource_map.cb_range_map[range_id] = [=](pvalue) {
-      // ignore index in SM 5.0
-      return get_item_in_argbuf_binding_table(cbuf_table_index, index);
-    };
-  }
-  for (auto &[range_id, sampler] : shader_info->samplerMap) {
-    // TODO: abstract SM 5.0 binding
-    resource_map.sampler_range_map[range_id] = {
-      [=, index = sampler.arg_index](pvalue) {
-        // ignore index in SM 5.0
-        return get_item_in_argbuf_binding_table(binding_table_index, index);
-      },
-      [=, index = sampler.arg_cube_index](pvalue) {
-        // ignore index in SM 5.0
-        return get_item_in_argbuf_binding_table(binding_table_index, index);
-      },
-      [=, index = sampler.arg_metadata_index](pvalue) {
-        // ignore index in SM 5.0
-        return get_item_in_argbuf_binding_table(binding_table_index, index);
-      }
-    };
-  }
-  for (auto &[range_id, srv] : shader_info->srvMap) {
-    if (srv.resource_type != shader::common::ResourceType::NonApplicable) {
-      // TODO: abstract SM 5.0 binding
-      auto access =
-        srv.sampled ? air::MemoryAccess::sample : air::MemoryAccess::read;
-      auto texture_kind_logical = air::to_air_resource_type(srv.resource_type, srv.compared);
-      auto scaler_type = air::to_air_scaler_type(srv.scaler_type);
-      resource_map.srv_range_map[range_id] = {
-        air::MSLTexture{
-          .component_type = scaler_type,
-          .memory_access = access,
-          .resource_kind = air::lowering_texture_1d_to_2d(texture_kind_logical),
-          .resource_kind_logical = texture_kind_logical,
-        },
-        [=, index = srv.arg_index](pvalue) {
-          // ignore index in SM 5.0
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        [=, index = srv.arg_metadata_index](pvalue) {
-          // ignore index in SM 5.0
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        false
-      };
-    } else {
-      resource_map.srv_buf_range_map[range_id] = {
-        srv.structure_stride,
-        [=, index = srv.arg_index](pvalue) {
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        [=, index = srv.arg_metadata_index](pvalue) {
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        false
-      };
-    }
-  }
-  for (auto &[range_id, uav] : shader_info->uavMap) {
-    auto access = uav.written ? (uav.read ? air::MemoryAccess::read_write
-                                          : air::MemoryAccess::write)
-                              : air::MemoryAccess::read;
-    if (uav.resource_type != shader::common::ResourceType::NonApplicable) {
-      auto texture_kind_logical = air::to_air_resource_type(uav.resource_type);
-      auto scaler_type = air::to_air_scaler_type(uav.scaler_type);
-      resource_map.uav_range_map[range_id] = {
-        air::MSLTexture{
-          .component_type = scaler_type,
-          .memory_access = access,
-          .resource_kind = air::lowering_texture_1d_to_2d(texture_kind_logical),
-          .resource_kind_logical = texture_kind_logical,
-        },
-        [=, index = uav.arg_index](pvalue) {
-          // ignore index in SM 5.0
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        [=, index = uav.arg_metadata_index](pvalue) {
-          // ignore index in SM 5.0
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        uav.global_coherent
-      };
-    } else {
-      resource_map.uav_buf_range_map[range_id] = {
-        uav.structure_stride,
-        [=, index = uav.arg_index](pvalue) {
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        [=, index = uav.arg_metadata_index](pvalue) {
-          return get_item_in_argbuf_binding_table(binding_table_index, index);
-        },
-        uav.global_coherent
-      };
-      if (uav.with_counter) {
-        auto argbuf_index_counterptr = uav.arg_counter_index;
-        resource_map.uav_counter_range_map[range_id] = [=](pvalue) {
-          return get_item_in_argbuf_binding_table(
-            binding_table_index, argbuf_index_counterptr
-          );
-        };
-      }
-    }
-  }
-};
 
 void setup_immediate_constant_buffer(
   const ShaderInfo *shader_info, io_binding_map &resource_map,
@@ -472,7 +302,7 @@ llvm::Error convert_dxbc_pixel_shader(
     };
   }
 
-  setup_binding_table(shader_info, resource_map, func_signature, module);
+  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
 
   auto [function, function_metadata] =
     func_signature.CreateFunction(name, context, module, 0, false);
@@ -512,12 +342,18 @@ llvm::Error convert_dxbc_pixel_shader(
     shader_info, resource_map, types, module, builder
   );
 
-  struct context ctx {
-    .builder = builder, .air = air, .llvm = context, .module = module, .function = function,
-    .resource = resource_map, .types = types,
-    .pso_sample_mask = pso_sample_mask,
-    .shader_type = pShaderInternal->shader_type,
-    .metal_version = metal_version,
+  struct context ctx{
+      .builder = builder,
+      .air = air,
+      .binding = *binding_map,
+      .llvm = context,
+      .module = module,
+      .function = function,
+      .resource = resource_map,
+      .types = types,
+      .pso_sample_mask = pso_sample_mask,
+      .shader_type = pShaderInternal->shader_type,
+      .metal_version = metal_version,
   };
 
   if (auto err = prologue.build(ctx).takeError()) {
@@ -584,7 +420,7 @@ llvm::Error convert_dxbc_compute_shader(
     }
   }
 
-  setup_binding_table(shader_info, resource_map, func_signature, module);
+  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
   setup_tgsm(shader_info, resource_map, types, module);
 
   auto [function, function_metadata] =
@@ -608,11 +444,18 @@ llvm::Error convert_dxbc_compute_shader(
     shader_info, resource_map, types, module, builder
   );
 
-  struct context ctx {
-    .builder = builder, .air = air, .llvm = context, .module = module, .function = function,
-    .resource = resource_map, .types = types, .pso_sample_mask = 0xffffffff,
-    .shader_type = pShaderInternal->shader_type,
-    .metal_version = metal_version,
+  struct context ctx{
+      .builder = builder,
+      .air = air,
+      .binding = *binding_map,
+      .llvm = context,
+      .module = module,
+      .function = function,
+      .resource = resource_map,
+      .types = types,
+      .pso_sample_mask = 0xffffffff,
+      .shader_type = pShaderInternal->shader_type,
+      .metal_version = metal_version,
   };
 
   if (auto err = prologue.build(ctx).takeError()) {
@@ -762,7 +605,7 @@ llvm::Error convert_dxbc_vertex_shader(
     );
   };
 
-  setup_binding_table(shader_info, resource_map, func_signature, module);
+  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
 
   uint32_t rta_idx_out = ~0u;
   if (gs_passthrough && gs_passthrough->Data.RenderTargetArrayIndexReg != 255) {
@@ -825,11 +668,18 @@ llvm::Error convert_dxbc_vertex_shader(
     shader_info, resource_map, types, module, builder
   );
 
-  struct context ctx {
-    .builder = builder, .air = air, .llvm = context, .module = module, .function = function,
-    .resource = resource_map, .types = types, .pso_sample_mask = 0xffffffff,
-    .shader_type = pShaderInternal->shader_type,
-    .metal_version = metal_version,
+  struct context ctx{
+      .builder = builder,
+      .air = air,
+      .binding = *binding_map,
+      .llvm = context,
+      .module = module,
+      .function = function,
+      .resource = resource_map,
+      .types = types,
+      .pso_sample_mask = 0xffffffff,
+      .shader_type = pShaderInternal->shader_type,
+      .metal_version = metal_version,
   };
 
   if (auto err = prologue.build(ctx).takeError()) {

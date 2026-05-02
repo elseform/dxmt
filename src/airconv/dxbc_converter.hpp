@@ -14,6 +14,7 @@
 #include "dxbc_constants.hpp"
 #include "dxbc_instructions.hpp"
 #include "nt/air_builder.hpp"
+#include "nt/dxbc_binding_map.hpp"
 #include "shader_common.hpp"
 
 #include "airconv_public.h"
@@ -164,15 +165,8 @@ struct interpolant_descriptor {
 struct io_binding_map {
   llvm::GlobalVariable *icb = nullptr;
   llvm::Value *icb_float = nullptr;
-  std::unordered_map<uint32_t, IndexedIRValue> cb_range_map{};
-  std::unordered_map<uint32_t, sampler_descriptor> sampler_range_map{};
-  std::unordered_map<uint32_t, texture_descriptor> srv_range_map{};
-  std::unordered_map<uint32_t, buffer_descriptor> srv_buf_range_map{};
-  std::unordered_map<uint32_t, texture_descriptor> uav_range_map{};
-  std::unordered_map<uint32_t, buffer_descriptor> uav_buf_range_map{};
   std::unordered_map<uint32_t, std::pair<uint32_t, llvm::GlobalVariable *>>
     tgsm_map{};
-  std::unordered_map<uint32_t, IndexedIRValue> uav_counter_range_map{};
   std::unordered_map<uint32_t, interpolant_descriptor> interpolant_map{};
 
   register_file input{};
@@ -229,6 +223,7 @@ struct io_binding_map {
 struct context {
   llvm::IRBuilder<> &builder;
   llvm::air::AIRBuilder &air;
+  BindingMap &binding;
   llvm::LLVMContext &llvm;
   llvm::Module &module;
   llvm::Function *function;
@@ -462,11 +457,9 @@ size_t estimate_payload_size(SM50ShaderInternal *pHullStage, float factor, uint3
 
 size_t estimate_mesh_size(SM50ShaderInternal *pDomainStage, uint32_t max_potential_factor_int);
 
-void setup_binding_table(
-  const ShaderInfo *shader_info, io_binding_map &resource_map,
-  air::FunctionSignatureBuilder &func_signature, llvm::Module &module,
-  uint32_t argbuffer_constant_slot = SM50_BINDING_INDEX_CONSTANT_BUFFER, 
-  uint32_t argbuffer_slot = SM50_BINDING_INDEX_ARGUMENT_TABLE
+std::unique_ptr<BindingMap> setup_binding_table2(
+    const ShaderInfo *shader_info, air::FunctionSignatureBuilder &func_signature, llvm::Module &module,
+    uint32_t argbuffer_constant_slot = SM50_BINDING_INDEX_CONSTANT_BUFFER, uint32_t argbuffer_slot = SM50_BINDING_INDEX_ARGUMENT_TABLE
 );
 
 void setup_metal_version(llvm::Module &module, SM50_SHADER_METAL_VERSION metal_version);
