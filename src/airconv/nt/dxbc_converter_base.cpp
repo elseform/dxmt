@@ -1306,9 +1306,19 @@ Converter::operator()(const InstIntegerBinaryOpWithTwoDst &bin) {
   }
   case IntegerBinaryOpWithTwoDst::UDiv:
     if (!IsNull(bin.dst_hi))
-      StoreOperand(bin.dst_hi, ir.CreateUDiv(Src0Hi, Src1Hi));
+      StoreOperand(
+          bin.dst_hi,
+          ir.CreateSelect(
+              ir.CreateIsNull(Src1Hi), ConstantInt::getAllOnesValue(Src1Hi->getType()), ir.CreateUDiv(Src0Hi, Src1Hi)
+          )
+      );
     if (!IsNull(bin.dst_low))
-      StoreOperand(bin.dst_low, ir.CreateURem(Src0Lo, Src1Lo));
+      StoreOperand(
+          bin.dst_low,
+          ir.CreateSelect(
+              ir.CreateIsNull(Src1Lo), ConstantInt::getAllOnesValue(Src1Lo->getType()), ir.CreateURem(Src0Lo, Src1Lo)
+          )
+      );
     break;
   case IntegerBinaryOpWithTwoDst::UAddCarry: {
     if (!IsNull(bin.dst_hi))
