@@ -1858,6 +1858,13 @@ struct SM50_SHADER_PSO_TESSELLATOR_DATA32 {
   uint32_t max_potential_tess_factor;
 };
 
+struct SM50_SHADER_ROOT_SIGNATURE_DATA32 {
+  uint32_t next;
+  enum SM50_SHADER_COMPILATION_ARGUMENT_TYPE type;
+  uint32_t bytecode;
+  uint32_t bytecode_length;
+};
+
 void
 sm50_compilation_argument32_convert(
     struct SM50_SHADER_COMPILATION_ARGUMENT_DATA *first_arg, struct SM50_SHADER_COMPILATION_ARGUMENT_DATA32 *args32
@@ -1952,6 +1959,17 @@ sm50_compilation_argument32_convert(
       last_arg->next = NULL;
       data->type = src->type;
       data->max_potential_tess_factor = src->max_potential_tess_factor;
+      break;
+    }
+    case SM50_SHADER_ROOT_SIGNATURE: {
+      struct SM50_SHADER_ROOT_SIGNATURE_DATA32 *src = (void *)args32;
+      struct SM50_SHADER_ROOT_SIGNATURE_DATA *data = malloc(sizeof(struct SM50_SHADER_ROOT_SIGNATURE_DATA));
+      last_arg->next = data;
+      last_arg = (void *)data;
+      last_arg->next = NULL;
+      data->type = src->type;
+      data->bytecode = UInt32ToPtr(src->bytecode);
+      data->bytecode_length = src->bytecode_length;
       break;
     }
     case SM50_SHADER_ARGUMENT_TYPE_MAX:

@@ -264,6 +264,8 @@ llvm::Error convert_dxbc_pixel_shader(
     metal_version = sm50_common->metal_version;
     shader_flags = sm50_common->flags;
   }
+  SM50_SHADER_ROOT_SIGNATURE_DATA *rootsig = nullptr;
+  args_get_data<SM50_SHADER_ROOT_SIGNATURE, SM50_SHADER_ROOT_SIGNATURE_DATA>(pArgs, &rootsig);
 
   IREffect prologue([](auto) { return std::monostate(); });
   IRValue epilogue([](struct context ctx) -> pvalue {
@@ -302,7 +304,11 @@ llvm::Error convert_dxbc_pixel_shader(
     };
   }
 
-  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
+  auto binding_map = rootsig ? setup_binding_rootsig(
+                                   shader_info, func_signature, module, D3D10_SB_PIXEL_SHADER, rootsig->bytecode,
+                                   rootsig->bytecode_length
+                               )
+                             : setup_binding_table2(shader_info, func_signature, module);
 
   auto [function, function_metadata] =
     func_signature.CreateFunction(name, context, module, 0, false);
@@ -400,6 +406,8 @@ llvm::Error convert_dxbc_compute_shader(
     metal_version = sm50_common->metal_version;
     shader_flags = sm50_common->flags;
   }
+  SM50_SHADER_ROOT_SIGNATURE_DATA *rootsig = nullptr;
+  args_get_data<SM50_SHADER_ROOT_SIGNATURE, SM50_SHADER_ROOT_SIGNATURE_DATA>(pArgs, &rootsig);
 
   IREffect prologue([](auto) { return std::monostate(); });
   IRValue epilogue([](struct context ctx) -> pvalue {
@@ -420,7 +428,11 @@ llvm::Error convert_dxbc_compute_shader(
     }
   }
 
-  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
+  auto binding_map = rootsig ? setup_binding_rootsig(
+                                   shader_info, func_signature, module, D3D11_SB_COMPUTE_SHADER, rootsig->bytecode,
+                                   rootsig->bytecode_length
+                               )
+                             : setup_binding_table2(shader_info, func_signature, module);
   setup_tgsm(shader_info, resource_map, types, module);
 
   auto [function, function_metadata] =
@@ -509,6 +521,8 @@ llvm::Error convert_dxbc_vertex_shader(
     metal_version = sm50_common->metal_version;
     shader_flags = sm50_common->flags;
   }
+  SM50_SHADER_ROOT_SIGNATURE_DATA *rootsig = nullptr;
+  args_get_data<SM50_SHADER_ROOT_SIGNATURE, SM50_SHADER_ROOT_SIGNATURE_DATA>(pArgs, &rootsig);
 
   IREffect prologue([](auto) { return std::monostate(); });
   IRValue epilogue([](struct context ctx) -> pvalue {
@@ -605,7 +619,11 @@ llvm::Error convert_dxbc_vertex_shader(
     );
   };
 
-  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
+  auto binding_map = rootsig ? setup_binding_rootsig(
+                                   shader_info, func_signature, module, D3D10_SB_VERTEX_SHADER, rootsig->bytecode,
+                                   rootsig->bytecode_length
+                               )
+                             : setup_binding_table2(shader_info, func_signature, module);
 
   uint32_t rta_idx_out = ~0u;
   if (gs_passthrough && gs_passthrough->Data.RenderTargetArrayIndexReg != 255) {

@@ -209,6 +209,8 @@ convert_dxbc_vertex_hull_shader(
   }
   SM50_SHADER_IA_INPUT_LAYOUT_DATA *ia_layout = nullptr;
   args_get_data<SM50_SHADER_IA_INPUT_LAYOUT, SM50_SHADER_IA_INPUT_LAYOUT_DATA>(pArgs, &ia_layout);
+  SM50_SHADER_ROOT_SIGNATURE_DATA *rootsig = nullptr;
+  args_get_data<SM50_SHADER_ROOT_SIGNATURE, SM50_SHADER_ROOT_SIGNATURE_DATA>(pArgs, &rootsig);
 
   bool is_indexed_draw = ia_layout && ia_layout->index_buffer_format > 0;
 
@@ -242,8 +244,20 @@ convert_dxbc_vertex_hull_shader(
     }
   }
 
-  auto binding_map = setup_binding_table2(&vertex_shader_info, func_signature, module, SM50_BINDING_INDEX_CONSTANT_BUFFER2, SM50_BINDING_INDEX_ARGUMENT_TABLE2);
-  auto binding_map_hs = setup_binding_table2(&hull_shader_info, func_signature, module);
+  auto binding_map = rootsig
+                         ? setup_binding_rootsig(
+                               &vertex_shader_info, func_signature, module, D3D10_SB_VERTEX_SHADER, rootsig->bytecode,
+                               rootsig->bytecode_length, SM50_BINDING_INDEX_ROOT_ARGUMENTS + 2, SM50_BINDING_INDEX_STATIC_SAMPLERS + 2
+                           )
+                         : setup_binding_table2(
+                               &vertex_shader_info, func_signature, module, SM50_BINDING_INDEX_CONSTANT_BUFFER2,
+                               SM50_BINDING_INDEX_ARGUMENT_TABLE2
+                           );
+  auto binding_map_hs = rootsig ? setup_binding_rootsig(
+                                      &hull_shader_info, func_signature, module, D3D11_SB_HULL_SHADER,
+                                      rootsig->bytecode, rootsig->bytecode_length
+                                  )
+                                : setup_binding_table2(&hull_shader_info, func_signature, module);
 
   uint32_t threads_per_patch = next_pow2(pHullStage->hull_maximum_threads_per_patch);
   uint32_t patch_per_group = next_pow2(32 / threads_per_patch);
@@ -736,6 +750,8 @@ convert_dxbc_tesselator_domain_shader(
     metal_version = sm50_common->metal_version;
     shader_flags = sm50_common->flags;
   }
+  SM50_SHADER_ROOT_SIGNATURE_DATA *rootsig = nullptr;
+  args_get_data<SM50_SHADER_ROOT_SIGNATURE, SM50_SHADER_ROOT_SIGNATURE_DATA>(pArgs, &rootsig);
 
   auto [final_maxtessfactor, factor_int] = get_final_maxtessfactor(pHullStage, pArgs);
 
@@ -758,7 +774,11 @@ convert_dxbc_tesselator_domain_shader(
 
   auto &ds_output_handlers = pShaderInternal->mesh_output_handlers;
 
-  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
+  auto binding_map = rootsig ? setup_binding_rootsig(
+                                   shader_info, func_signature, module, D3D11_SB_DOMAIN_SHADER, rootsig->bytecode,
+                                   rootsig->bytecode_length
+                               )
+                             : setup_binding_table2(shader_info, func_signature, module);
 
   uint32_t rta_idx_out = ~0u;
   if (gs_passthrough && gs_passthrough->Data.RenderTargetArrayIndexReg != 255) {

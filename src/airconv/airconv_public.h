@@ -5,7 +5,7 @@
 #ifndef __AIRCONV_H
 #define __AIRCONV_H
 
-#define AIRCONV_VERSION 23
+#define AIRCONV_VERSION 24
 
 #ifdef __cplusplus
 #include <string>
@@ -193,6 +193,7 @@ enum SM50_SHADER_COMPILATION_ARGUMENT_TYPE {
   SM50_SHADER_GS_PASS_THROUGH = 5,
   SM50_SHADER_PSO_GEOMETRY_SHADER = 6,
   SM50_SHADER_PSO_TESSELLATOR = 7,
+  SM50_SHADER_ROOT_SIGNATURE = 8,
   SM50_SHADER_ARGUMENT_TYPE_MAX = 0xffffffff,
 };
 
@@ -289,6 +290,13 @@ struct SM50_SHADER_PSO_TESSELLATOR_DATA {
   void *next;
   enum SM50_SHADER_COMPILATION_ARGUMENT_TYPE type;
   uint32_t max_potential_tess_factor;
+};
+
+struct SM50_SHADER_ROOT_SIGNATURE_DATA {
+  void *next;
+  enum SM50_SHADER_COMPILATION_ARGUMENT_TYPE type;
+  const void* bytecode;
+  size_t bytecode_length;
 };
 
 AIRCONV_API int SM50Initialize(

@@ -118,6 +118,8 @@ convert_dxbc_geometry_shader(
     metal_version = sm50_common->metal_version;
     shader_flags = sm50_common->flags;
   }
+  SM50_SHADER_ROOT_SIGNATURE_DATA *rootsig = nullptr;
+  args_get_data<SM50_SHADER_ROOT_SIGNATURE, SM50_SHADER_ROOT_SIGNATURE_DATA>(pArgs, &rootsig);
 
   IREffect prologue([](auto) { return std::monostate(); });
   IRValue epilogue([](struct context ctx) -> pvalue { return nullptr; });
@@ -133,7 +135,11 @@ convert_dxbc_geometry_shader(
   }
   auto& gs_output_handlers = pShaderInternal->mesh_output_handlers;
 
-  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
+  auto binding_map = rootsig ? setup_binding_rootsig(
+                                   shader_info, func_signature, module, D3D10_SB_GEOMETRY_SHADER, rootsig->bytecode,
+                                   rootsig->bytecode_length
+                               )
+                             : setup_binding_table2(shader_info, func_signature, module);
 
   auto gs_output_topology = pShaderInternal->gs_output_topology;
   int32_t max_vertex_out = pShaderInternal->gs_max_vertex_output;
@@ -536,6 +542,8 @@ convert_dxbc_vertex_for_geometry_shader(
     metal_version = sm50_common->metal_version;
     shader_flags = sm50_common->flags;
   }
+  SM50_SHADER_ROOT_SIGNATURE_DATA *rootsig = nullptr;
+  args_get_data<SM50_SHADER_ROOT_SIGNATURE, SM50_SHADER_ROOT_SIGNATURE_DATA>(pArgs, &rootsig);
 
   bool is_triadj_strip = is_strip && pGeometryStage->gs_input_primitive == D3D10_SB_PRIMITIVE_TRIANGLE_ADJ;
   bool is_indexed_draw = ia_layout && ia_layout->index_buffer_format > 0;
@@ -561,7 +569,11 @@ convert_dxbc_vertex_for_geometry_shader(
     }
   }
 
-  auto binding_map = setup_binding_table2(shader_info, func_signature, module);
+  auto binding_map = rootsig ? setup_binding_rootsig(
+                                   shader_info, func_signature, module, D3D10_SB_VERTEX_SHADER, rootsig->bytecode,
+                                   rootsig->bytecode_length
+                               )
+                             : setup_binding_table2(shader_info, func_signature, module);
 
   uint32_t payload_idx = func_signature.DefineInput(air::InputPayload{.size = 16256});
   // (warp_size, 1, 1)
