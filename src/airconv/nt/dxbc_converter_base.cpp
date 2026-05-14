@@ -65,7 +65,7 @@ Converter::LoadOperand(const SrcOperandConstantBuffer &SrcOp, mask_t Mask) {
 
   auto RangeId = SrcOp.rangeid;
 
-  auto descriptor = ctx.binding.GetConstantBuffer(air, RangeId, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetConstantBuffer(air, RangeId, LoadOperandIndex(SrcOp.rangeindex));
   if (!descriptor)
     return ApplySrcModifier(SrcOp._, llvm::ConstantAggregateZero::get(air.getIntTy(4)), Mask);
   auto Handle = descriptor->Pointer;
@@ -423,7 +423,7 @@ llvm::Optional<TextureResourceHandle>
 Converter::LoadTexture(const SrcOperandResource &SrcOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetSRVTexture(air, SrcOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetSRVTexture(air, SrcOp.range_id, LoadOperandIndex(SrcOp.index));
   if (!descriptor)
     return {};
 
@@ -442,7 +442,7 @@ llvm::Optional<TextureResourceHandle>
 Converter::LoadTexture(const SrcOperandUAV &SrcOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetUAVTexture(air, SrcOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetUAVTexture(air, SrcOp.range_id, LoadOperandIndex(SrcOp.index));
   if (!descriptor)
     return {};
 
@@ -461,7 +461,7 @@ llvm::Optional<TextureResourceHandle>
 Converter::LoadTexture(const AtomicDstOperandUAV &DstOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetUAVTexture(air, DstOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetUAVTexture(air, DstOp.range_id, LoadOperandIndex(DstOp.index));
   if (!descriptor)
     return {};
 
@@ -480,7 +480,7 @@ llvm::Optional<BufferResourceHandle>
 Converter::LoadBuffer(const SrcOperandResource &SrcOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetSRVBuffer(air, SrcOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetSRVBuffer(air, SrcOp.range_id, LoadOperandIndex(SrcOp.index));
 
   if (!descriptor)
     return {};
@@ -495,7 +495,7 @@ llvm::Optional<BufferResourceHandle>
 Converter::LoadBuffer(const SrcOperandUAV &SrcOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetUAVBuffer(air, SrcOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetUAVBuffer(air, SrcOp.range_id, LoadOperandIndex(SrcOp.index));
   if (!descriptor)
     return {};
 
@@ -509,7 +509,7 @@ llvm::Optional<AtomicBufferResourceHandle>
 Converter::LoadBuffer(const AtomicDstOperandUAV &DstOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetUAVBuffer(air, DstOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetUAVBuffer(air, DstOp.range_id, LoadOperandIndex(DstOp.index));
   if (!descriptor)
     return {};
 
@@ -544,7 +544,7 @@ llvm::Optional<UAVCounterHandle>
 Converter::LoadCounter(const AtomicDstOperandUAV &SrcOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetUAVCounter(air, SrcOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetUAVCounter(air, SrcOp.range_id, LoadOperandIndex(SrcOp.index));
   if (!descriptor)
     return {};
 
@@ -555,7 +555,7 @@ llvm::Optional<SamplerHandle>
 Converter::LoadSampler(const SrcOperandSampler &SrcOp) {
   using namespace llvm::air;
 
-  auto descriptor = ctx.binding.GetSampler(air, SrcOp.range_id, nullptr /* FIXME */);
+  auto descriptor = ctx.binding.GetSampler(air, SrcOp.range_id, LoadOperandIndex(SrcOp.index));
   if (!descriptor)
     return {};
 

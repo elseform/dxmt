@@ -475,7 +475,11 @@ public:
     return Type::getInt8Ty(getContext());
   };
 
-  Type *getTextureHandleType(const Texture &Texture);
+  Type *getTextureHandleType(Texture::ResourceKind Kind);
+  Type *
+  getTextureHandleType(const Texture &Texture) {
+    return getTextureHandleType(Texture.kind);
+  }
   Type *getTexelType(const Texture &Texture);
   Type *getTexelGatherType(const Texture &Texture);
   Type *getTextureSampleCoordType(const Texture &Texture);

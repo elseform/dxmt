@@ -276,9 +276,9 @@ AIRBuilder::CreateAtomicCmpXchg(
 }
 
 Type *
-AIRBuilder::getTextureHandleType(const Texture &Texture) {
-  assert(Texture.kind <= Texture::last_resource_kind);
-  return getOrCreateStructType(std::format("struct._{}_t", TextureInfo[Texture.kind].air_symbol_suffix))
+AIRBuilder::getTextureHandleType(Texture::ResourceKind Kind) {
+  assert(Kind <= Texture::last_resource_kind);
+  return getOrCreateStructType(std::format("struct._{}_t", TextureInfo[Kind].air_symbol_suffix))
       ->getPointerTo(1);
 };
 
