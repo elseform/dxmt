@@ -5,7 +5,7 @@
 #ifndef __AIRCONV_H
 #define __AIRCONV_H
 
-#define AIRCONV_VERSION 22
+#define AIRCONV_VERSION 23
 
 #ifdef __cplusplus
 #include <string>
@@ -31,6 +31,9 @@ enum SM50_BINDING_INDEX: uint32_t {
   /* For multiple stages in the same shader function */
   SM50_BINDING_INDEX_CONSTANT_BUFFER2 = 6,
   SM50_BINDING_INDEX_ARGUMENT_TABLE2 = 7,
+
+  SM50_BINDING_INDEX_ROOT_ARGUMENTS = 0,
+  SM50_BINDING_INDEX_STATIC_SAMPLERS = 1,
 };
 
 enum MTL_SM50_SHADER_ARGUMENT_FLAG : uint32_t {

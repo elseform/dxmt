@@ -4,6 +4,7 @@ airconv_src = files([
  'air_signature.cpp',
  'air_operations.cpp',
  'dxbc_binding_sm50.cpp',
+ 'dxbc_binding_rootsig.cpp',
  'dxbc_converter.cpp',
  'dxbc_converter_gs.cpp',
  'dxbc_converter_ts.cpp',

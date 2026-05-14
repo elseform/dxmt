@@ -462,6 +462,13 @@ std::unique_ptr<BindingMap> setup_binding_table2(
     uint32_t argbuffer_constant_slot = SM50_BINDING_INDEX_CONSTANT_BUFFER, uint32_t argbuffer_slot = SM50_BINDING_INDEX_ARGUMENT_TABLE
 );
 
+std::unique_ptr<BindingMap> setup_binding_rootsig(
+    const ShaderInfo *shader_info, air::FunctionSignatureBuilder &func_signature, llvm::Module &module,
+    microsoft::D3D10_SB_TOKENIZED_PROGRAM_TYPE shader_type, const void *bytecode, size_t bytecode_length,
+    uint32_t root_sig_slot = SM50_BINDING_INDEX_ROOT_ARGUMENTS,
+    uint32_t static_sampler_slot = SM50_BINDING_INDEX_STATIC_SAMPLERS
+);
+
 void setup_metal_version(llvm::Module &module, SM50_SHADER_METAL_VERSION metal_version);
 
 void setup_temp_register(
