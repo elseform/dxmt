@@ -9,6 +9,7 @@ util_src = files([
   # 'util_shared_res.cpp',
   # 'util_sleep.cpp',
   'util_bloom.cpp',
+  'util_md5.cpp',
 
   'thread.cpp',
 

@@ -241,6 +241,16 @@ template <typename T> bool bcmpeq(const T *a, const T *b) {
 #endif
 }
 
+/** Extracts bit range from bit field */
+template<typename T>
+T bextract(T op, uint32_t first, uint32_t count) {
+  if (!count)
+    return 0;
+
+  T mask = (T(2) << (count - 1)) - T(1);
+  return (op >> first) & mask;
+}
+
 template <size_t Bits> class bitset {
   static constexpr size_t Qwords = align(Bits, 64) / 64;
 
