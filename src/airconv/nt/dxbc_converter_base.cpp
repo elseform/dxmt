@@ -1415,12 +1415,14 @@ Converter::operator()(const InstLoad &load) {
   llvm::Value *ArrayIndex = nullptr;
   llvm::Value *SampleIndex = nullptr;
   llvm::Constant *Offset = nullptr;
+  llvm::Value *OOB = nullptr;
 
   switch (Tex->Logical) {
   case Texture::texture_buffer:
     Address = LoadOperand(load.src_address, kMaskComponentX);
-    Address = ir.CreateAdd(Address, DecodeTextureBufferOffset(Tex->Metadata));
     Offset = air.getInt(load.offsets[0]);
+    OOB = ir.CreateICmpUGE(ir.CreateAdd(Address, Offset), DecodeTextureBufferElement(Tex->Metadata));
+    Address = ir.CreateAdd(Address, DecodeTextureBufferOffset(Tex->Metadata));
     break;
   case Texture::texture1d:
     Address = LoadOperand(load.src_address, kMaskComponentX);
@@ -1468,6 +1470,9 @@ Converter::operator()(const InstLoad &load) {
   if (!Offset->isNullValue())
     Address = ir.CreateAdd(Address, Offset);
 
+  if (OOB)
+    Address = ir.CreateSelect(OOB, llvm::ConstantInt::getAllOnesValue(Address->getType()), Address);
+
   llvm::Value *LOD = LoadOperand(load.src_address, kMaskComponentW);
 
   auto [Value, Residency] =
@@ -1485,10 +1490,12 @@ Converter::operator()(const InstLoadUAVTyped &load) {
   llvm::Value *Address = nullptr;
   llvm::Value *ArrayIndex = nullptr;
   llvm::Value *SampleIndex = nullptr;
+  llvm::Value *OOB = nullptr;
 
   switch (Tex->Logical) {
   case Texture::texture_buffer:
     Address = LoadOperand(load.src_address, kMaskComponentX);
+    OOB = ir.CreateICmpUGE(Address, DecodeTextureBufferElement(Tex->Metadata));
     Address = ir.CreateAdd(Address, DecodeTextureBufferOffset(Tex->Metadata));
     break;
   case Texture::texture1d:
@@ -1518,6 +1525,9 @@ Converter::operator()(const InstLoadUAVTyped &load) {
 
   if (Tex->Texture.memory_access == Texture::acesss_readwrite)
     air.CreateTextureFence(Tex->Texture, Tex->Handle);
+  
+  if (OOB)
+    Address = ir.CreateSelect(OOB, llvm::ConstantInt::getAllOnesValue(Address->getType()), Address);
 
   auto [Value, Residency] =
       air.CreateRead(Tex->Texture, Tex->Handle, Address, ArrayIndex, SampleIndex, air.getInt(0), Tex->GlobalCoherent);
@@ -2480,10 +2490,12 @@ Converter::operator()(const InstAtomicBinOp &atomic) {
   if (Tex) {
     llvm::Value *Address = nullptr;
     llvm::Value *ArrayIndex = nullptr;
+    llvm::Value *OOB = nullptr;
 
     switch (Tex->Logical) {
     case Texture::texture_buffer:
       Address = LoadOperand(atomic.dst_address, kMaskComponentX);
+      OOB = ir.CreateICmpUGE(Address, DecodeTextureBufferElement(Tex->Metadata));
       Address = ir.CreateAdd(Address, DecodeTextureBufferOffset(Tex->Metadata));
       break;
     case Texture::texture1d:
@@ -2508,6 +2520,8 @@ Converter::operator()(const InstAtomicBinOp &atomic) {
     default:
       return;
     }
+    if (OOB)
+      Address = ir.CreateSelect(OOB, llvm::ConstantInt::getAllOnesValue(Address->getType()), Address);
     auto Value =
         air.CreateAtomicRMW(Tex->Texture, Tex->Handle, Op, Address, LoadOperand(atomic.src, kMaskAll), ArrayIndex);
     StoreOperand(atomic.dst_original, Value);
