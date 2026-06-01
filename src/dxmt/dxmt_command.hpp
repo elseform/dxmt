@@ -278,7 +278,7 @@ private:
   WMT::Reference<WMT::Function> cs_clear_texture2d_array_float_;
   Rc<Texture> clearing_texture_;
   Rc<Buffer> clearing_buffer_;
-  TextureViewKey clearing_view_ = 0; // type compatible with BufferViewKey
+  uint64_t clearing_view_ = 0; // type compatible with BufferViewKey
   uint32_t dispatch_depth_ = 1;
 
   struct DXMTClearMetadata {

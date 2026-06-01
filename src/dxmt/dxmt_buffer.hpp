@@ -42,7 +42,29 @@ enum class BufferAllocationFlag : uint32_t {
   CpuPlaced = 6,
 };
 
-typedef uint64_t BufferViewKey;
+struct BufferViewKey {
+  union {
+    struct {
+      uint32_t index;
+      uint32_t valid_bits;
+    };
+    uint64_t impl_;
+  };
+
+  BufferViewKey() {
+    impl_ = 0;
+  }
+  BufferViewKey(uint64_t impl) {
+    impl_ = impl;
+  }
+  BufferViewKey(uint32_t index, std::nullopt_t ensure_correct_constructor) {
+    this->index = index;
+    valid_bits = ~0u;
+  }
+  operator uint64_t() const {
+    return impl_;
+  }
+};
 
 struct BufferViewDescriptor {
   WMTPixelFormat format;
@@ -177,7 +199,7 @@ public:
   };
 
   WMTPixelFormat pixelFormat(BufferViewKey view) const {
-    return viewDescriptors_[view].format;
+    return viewDescriptors_[view.index].format;
   }
 
 private:
@@ -189,7 +211,7 @@ private:
   uint32_t version_ = 0;
   std::atomic<uint32_t> refcount_ = {0u};
 
-  std::vector<BufferViewDescriptor> viewDescriptors_;
+  small_vector<BufferViewDescriptor, 1> viewDescriptors_;
   dxmt::mutex mutex_;
   WMT::Device device_;
 };

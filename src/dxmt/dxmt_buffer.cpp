@@ -79,7 +79,7 @@ Buffer::view_(BufferViewKey key, BufferAllocation *allocation) {
   if (unlikely(allocation->version_ != version_)) {
     prepareAllocationViews(allocation);
   }
-  return *allocation->cached_view_[key];
+  return *allocation->cached_view_[key.index];
 };
 
 DXMT_RESOURCE_RESIDENCY_STATE &
@@ -92,7 +92,7 @@ Buffer::residency(BufferViewKey key, BufferAllocation *allocation) {
   if (unlikely(allocation->version_ != version_)) {
     prepareAllocationViews(allocation);
   }
-  return allocation->cached_view_[key]->residency;
+  return allocation->cached_view_[key.index]->residency;
 }
 
 void
@@ -140,12 +140,12 @@ Buffer::createView(BufferViewDescriptor const &descriptor) {
   unsigned i = 0;
   for (; i < version_; i++) {
     if (viewDescriptors_[i].format == descriptor.format) {
-      return i;
+      return BufferViewKey(i, std::nullopt);
     }
   }
   viewDescriptors_.push_back(descriptor);
   version_ = version_ + 1;
-  return i;
+  return BufferViewKey(i, std::nullopt);;
 }
 
 Rc<BufferAllocation>
