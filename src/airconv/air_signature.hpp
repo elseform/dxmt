@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026 Feifan He for CodeWeavers
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
 #pragma once
 
 #include "adt.hpp"
@@ -15,18 +33,6 @@
 #include "nt/air_builder.hpp"
 
 namespace dxmt::air {
-
-// static llvm::StructType *
-// getOrCreateStructType(llvm::StringRef Name, llvm::ArrayRef<llvm::Type *>
-// EltTys,
-//                       llvm::LLVMContext &Ctx) {
-//   using namespace llvm;
-//   StructType *ST = StructType::getTypeByName(Ctx, Name);
-//   if (ST)
-//     return ST;
-
-//   return StructType::create(Ctx, EltTys, Name);
-// }
 
 inline llvm::StructType *
 getOrCreateStructType(llvm::StringRef Name, llvm::LLVMContext &Ctx) {
@@ -558,6 +564,10 @@ struct OutputCoverageMask {
   bool operator==(OutputCoverageMask const& rhs) const { return true; }
 };
 
+struct OutputStencilRef {
+  bool operator==(OutputStencilRef const& rhs) const { return true; }
+};
+
 struct OutputClipDistance {
   size_t count;
   bool operator==(OutputClipDistance const& rhs) const { return true; }
@@ -598,7 +608,7 @@ using FunctionOutput = std::variant<
   OutputVertex, OutputPosition, OutputClipDistance,
   OutputRenderTargetArrayIndex, OutputViewportArrayIndex,
   /* fragment */
-  OutputRenderTarget, OutputDepth, OutputCoverageMask>;
+  OutputRenderTarget, OutputDepth, OutputCoverageMask, OutputStencilRef>;
 
 using MeshVertexOutput = std::variant<OutputMeshData, OutputPosition, OutputClipDistance, OutputPointSize>;
 

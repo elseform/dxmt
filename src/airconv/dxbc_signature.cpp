@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026 Feifan He for CodeWeavers
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
 #include "dxbc_converter.hpp"
 #include <format>
 
@@ -517,7 +535,24 @@ void handle_signature_ps(
       break;
     }
     case D3D11_SB_OPERAND_TYPE_OUTPUT_STENCIL_REF: {
-      assert(0 && "todo");
+      signature_handlers.push_back([=](SignatureContext &ctx) {
+        ctx.prologue << make_effect([](struct context ctx) -> std::monostate {
+          assert(ctx.resource.stencil_ref_reg == nullptr && "otherwise oStencil is defined twice");
+          ctx.resource.stencil_ref_reg = ctx.builder.CreateAlloca(ctx.types._int);
+          return {};
+        });
+      });
+      auto assigned_index = func_signature.DefineOutput(OutputStencilRef{});
+      signature_handlers.push_back([=](SignatureContext &ctx) {
+        ctx.epilogue >> [=](pvalue v) {
+          return make_irvalue([=](struct context ctx) {
+            auto ostencil = ctx.builder.CreateLoad(
+                ctx.types._int, ctx.builder.CreateConstInBoundsGEP1_32(ctx.types._int, ctx.resource.stencil_ref_reg, 0)
+            );
+            return ctx.builder.CreateInsertValue(v, ostencil, {assigned_index});
+          });
+        };
+      });
       break;
     }
     case D3D10_SB_OPERAND_TYPE_OUTPUT_COVERAGE_MASK: {

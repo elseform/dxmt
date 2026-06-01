@@ -678,6 +678,13 @@ Converter::StoreOperand(const DstOperandOutputCoverageMask &DstOp, llvm::Value *
 }
 
 void
+Converter::StoreOperand(const DstOperandOutputStencilRef &DstOp, llvm::Value *Value) {
+  auto ValueInt = ZExtAndBitcastToInt32(Value);
+  auto Ptr = ir.CreateConstGEP1_32(ir.getInt32Ty(), res.stencil_ref_reg, 0);
+  ir.CreateStore(ExtractElement(ValueInt, 0), Ptr);
+}
+
+void
 Converter::StoreOperand(const DstOperandOutputDepth &DstOp, llvm::Value *Value) {
   auto ValueFloat = ZExtAndBitcastToFloat(Value);
   auto Ptr = ir.CreateConstGEP1_32(ir.getFloatTy(), res.depth_output_reg, 0);
