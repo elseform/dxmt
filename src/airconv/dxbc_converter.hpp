@@ -462,14 +462,11 @@ size_t estimate_payload_size(SM50ShaderInternal *pHullStage, float factor, uint3
 
 size_t estimate_mesh_size(SM50ShaderInternal *pDomainStage, uint32_t max_potential_factor_int);
 
-constexpr uint32_t kConstantBufferBindIndex = 29;
-constexpr uint32_t kArgumentBufferBindIndex = 30;
-
 void setup_binding_table(
   const ShaderInfo *shader_info, io_binding_map &resource_map,
   air::FunctionSignatureBuilder &func_signature, llvm::Module &module,
-  uint32_t argbuffer_constant_slot = kConstantBufferBindIndex, 
-  uint32_t argbuffer_slot = kArgumentBufferBindIndex
+  uint32_t argbuffer_constant_slot = SM50_BINDING_INDEX_CONSTANT_BUFFER, 
+  uint32_t argbuffer_slot = SM50_BINDING_INDEX_ARGUMENT_TABLE
 );
 
 void setup_metal_version(llvm::Module &module, SM50_SHADER_METAL_VERSION metal_version);

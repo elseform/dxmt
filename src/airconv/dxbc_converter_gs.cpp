@@ -563,7 +563,7 @@ convert_dxbc_vertex_for_geometry_shader(
   func_signature.DefineInput(air::InputMeshGridProperties{});
   uint32_t draw_argument_idx = func_signature.DefineInput(air::ArgumentBindingBuffer{
       .buffer_size = {},
-      .location_index = 21,
+      .location_index = SM50_BINDING_INDEX_DRAW_ARGUMENTS,
       .array_size = 0,
       .memory_access = air::MemoryAccess::read,
       .address_space = air::AddressSpace::constant,
@@ -578,7 +578,7 @@ convert_dxbc_vertex_for_geometry_shader(
   if (is_indexed_draw) {
     index_buffer_idx = func_signature.DefineInput(air::ArgumentBindingBuffer{
         .buffer_size = {},
-        .location_index = 20,
+        .location_index = SM50_BINDING_INDEX_INDEX_BUFFER,
         .array_size = 0,
         .memory_access = air::MemoryAccess::read,
         .address_space = air::AddressSpace::device,

@@ -1058,7 +1058,7 @@ _MTLRenderCommandEncoder_encodeCommands(void *obj) {
     }
     case WMTRenderCommandDXMTGeometryDraw: {
       struct wmtcmd_render_dxmt_geometry_draw *body = (struct wmtcmd_render_dxmt_geometry_draw *)next;
-      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:21];
+      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       [encoder drawMeshThreadgroups:MTLSizeMake(body->warp_count, body->instance_count, 1)
           threadsPerObjectThreadgroup:MTLSizeMake(body->vertex_per_warp, 1, 1)
             threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
@@ -1066,8 +1066,10 @@ _MTLRenderCommandEncoder_encodeCommands(void *obj) {
     }
     case WMTRenderCommandDXMTGeometryDrawIndexed: {
       struct wmtcmd_render_dxmt_geometry_draw_indexed *body = (struct wmtcmd_render_dxmt_geometry_draw_indexed *)next;
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer offset:body->index_buffer_offset atIndex:20];
-      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer
+                        offset:body->index_buffer_offset
+                       atIndex:SM50_BINDING_INDEX_INDEX_BUFFER];
+      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       [encoder drawMeshThreadgroups:MTLSizeMake(body->warp_count, body->instance_count, 1)
           threadsPerObjectThreadgroup:MTLSizeMake(body->vertex_per_warp, 1, 1)
             threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
@@ -1075,38 +1077,51 @@ _MTLRenderCommandEncoder_encodeCommands(void *obj) {
     }
     case WMTRenderCommandDXMTGeometryDrawIndirect: {
       struct wmtcmd_render_dxmt_geometry_draw_indirect *body = (struct wmtcmd_render_dxmt_geometry_draw_indirect *)next;
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer offset:body->indirect_args_offset atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer
+                        offset:body->indirect_args_offset
+                       atIndex:SM50_BINDING_INDEX_INDIRECT_ARGUMENTS];
       [encoder drawMeshThreadgroupsWithIndirectBuffer:(id<MTLBuffer>)body->dispatch_args_buffer
                                  indirectBufferOffset:body->dispatch_args_offset
                           threadsPerObjectThreadgroup:MTLSizeMake(body->vertex_per_warp, 1, 1)
                             threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments offset:0 atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments
+                        offset:0
+                       atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       break;
     }
     case WMTRenderCommandDXMTGeometryDrawIndexedIndirect: {
       struct wmtcmd_render_dxmt_geometry_draw_indexed_indirect *body =
           (struct wmtcmd_render_dxmt_geometry_draw_indexed_indirect *)next;
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer offset:body->index_buffer_offset atIndex:20];
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer offset:body->indirect_args_offset atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer
+                        offset:body->index_buffer_offset
+                       atIndex:SM50_BINDING_INDEX_INDEX_BUFFER];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer
+                        offset:body->indirect_args_offset
+                       atIndex:SM50_BINDING_INDEX_INDIRECT_ARGUMENTS];
       [encoder drawMeshThreadgroupsWithIndirectBuffer:(id<MTLBuffer>)body->dispatch_args_buffer
                                  indirectBufferOffset:body->dispatch_args_offset
                           threadsPerObjectThreadgroup:MTLSizeMake(body->vertex_per_warp, 1, 1)
                             threadsPerMeshThreadgroup:MTLSizeMake(1, 1, 1)];
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments offset:0 atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments
+                        offset:0
+                       atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       break;
     }
     case WMTRenderCommandDXMTTessellationMeshDraw: {
       struct wmtcmd_render_dxmt_tessellation_mesh_draw *body = (struct wmtcmd_render_dxmt_tessellation_mesh_draw *)next;
-      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:21];
+      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       [encoder drawMeshThreadgroups:MTLSizeMake(body->patch_per_mesh_instance, body->instance_count, 1)
           threadsPerObjectThreadgroup:MTLSizeMake(body->threads_per_patch, body->patch_per_group, 1)
             threadsPerMeshThreadgroup:MTLSizeMake(32, 1, 1)];
       break;
     }
     case WMTRenderCommandDXMTTessellationMeshDrawIndexed: {
-      struct wmtcmd_render_dxmt_tessellation_mesh_draw_indexed *body = (struct wmtcmd_render_dxmt_tessellation_mesh_draw_indexed *)next;
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer offset:body->index_buffer_offset atIndex:20];
-      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:21];
+      struct wmtcmd_render_dxmt_tessellation_mesh_draw_indexed *body =
+          (struct wmtcmd_render_dxmt_tessellation_mesh_draw_indexed *)next;
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer
+                        offset:body->index_buffer_offset
+                       atIndex:SM50_BINDING_INDEX_INDEX_BUFFER];
+      [encoder setObjectBufferOffset:body->draw_arguments_offset atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       [encoder drawMeshThreadgroups:MTLSizeMake(body->patch_per_mesh_instance, body->instance_count, 1)
           threadsPerObjectThreadgroup:MTLSizeMake(body->threads_per_patch, body->patch_per_group, 1)
             threadsPerMeshThreadgroup:MTLSizeMake(32, 1, 1)];
@@ -1115,24 +1130,34 @@ _MTLRenderCommandEncoder_encodeCommands(void *obj) {
 
     case WMTRenderCommandDXMTTessellationMeshDrawIndirect: {
       struct wmtcmd_render_dxmt_tessellation_mesh_draw_indirect *body = (struct wmtcmd_render_dxmt_tessellation_mesh_draw_indirect *)next;
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer offset:body->indirect_args_offset atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer
+                        offset:body->indirect_args_offset
+                       atIndex:SM50_BINDING_INDEX_INDIRECT_ARGUMENTS];
       [encoder drawMeshThreadgroupsWithIndirectBuffer:(id<MTLBuffer>)body->dispatch_args_buffer
                                  indirectBufferOffset:body->dispatch_args_offset
                           threadsPerObjectThreadgroup:MTLSizeMake(body->threads_per_patch, body->patch_per_group, 1)
                             threadsPerMeshThreadgroup:MTLSizeMake(32, 1, 1)];
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments offset:0 atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments
+                        offset:0
+                       atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       break;
     }
     case WMTRenderCommandDXMTTessellationMeshDrawIndexedIndirect: {
       struct wmtcmd_render_dxmt_tessellation_mesh_draw_indexed_indirect *body =
           (struct wmtcmd_render_dxmt_tessellation_mesh_draw_indexed_indirect *)next;
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer offset:body->index_buffer_offset atIndex:20];
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer offset:body->indirect_args_offset atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->index_buffer
+                        offset:body->index_buffer_offset
+                       atIndex:SM50_BINDING_INDEX_INDEX_BUFFER];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->indirect_args_buffer
+                        offset:body->indirect_args_offset
+                       atIndex:SM50_BINDING_INDEX_INDIRECT_ARGUMENTS];
       [encoder drawMeshThreadgroupsWithIndirectBuffer:(id<MTLBuffer>)body->dispatch_args_buffer
                                  indirectBufferOffset:body->dispatch_args_offset
                           threadsPerObjectThreadgroup:MTLSizeMake(body->threads_per_patch, body->patch_per_group, 1)
                             threadsPerMeshThreadgroup:MTLSizeMake(32, 1, 1)];
-      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments offset:0 atIndex:21];
+      [encoder setObjectBuffer:(id<MTLBuffer>)body->imm_draw_arguments
+                        offset:0
+                       atIndex:SM50_BINDING_INDEX_DRAW_ARGUMENTS];
       break;
     }
     case WMTRenderCommandUpdateFence: {

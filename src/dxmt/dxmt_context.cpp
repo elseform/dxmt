@@ -111,7 +111,7 @@ ArgumentEncodingContext::encodeVertexBuffers(uint32_t slot_mask, uint64_t offset
   {
     auto &cmd = encodeRenderCommand<wmtcmd_render_setbufferoffset>();
     cmd.offset = getFinalArgumentBufferOffset(offset);
-    cmd.index = 16;
+    cmd.index = SM50_BINDING_INDEX_VERTEX_BUFFER;
     if constexpr (kind == PipelineKind::Geometry || kind == PipelineKind::Tessellation)
       cmd.type = WMTRenderCommandSetObjectBufferOffset;
     else
@@ -188,22 +188,21 @@ ArgumentEncodingContext::encodeConstantBuffers(const MTL_SHADER_REFLECTION *refl
     }
   }
 
-  /* kConstantBufferTableBinding = 29 */
   if constexpr (stage == PipelineStage::Compute) {
     auto &cmd = encodeComputeCommand<wmtcmd_compute_setbufferoffset>();
     cmd.type = WMTComputeCommandSetBufferOffset;
     cmd.offset = getFinalArgumentBufferOffset<true>(offset);
-    cmd.index = 29;
+    cmd.index = SM50_BINDING_INDEX_CONSTANT_BUFFER;
   } else {
     auto &cmd = encodeRenderCommand<wmtcmd_render_setbufferoffset>();
     cmd.offset = getFinalArgumentBufferOffset(offset);
-    cmd.index = 29;
+    cmd.index = SM50_BINDING_INDEX_CONSTANT_BUFFER;
     if constexpr (stage == PipelineStage::Vertex) {
       if constexpr (kind == PipelineKind::Geometry)
         cmd.type = WMTRenderCommandSetObjectBufferOffset;
       else if constexpr (kind == PipelineKind::Tessellation) {
         cmd.type = WMTRenderCommandSetObjectBufferOffset;
-        cmd.index = 27;
+        cmd.index = SM50_BINDING_INDEX_CONSTANT_BUFFER2;
       } else
         cmd.type = WMTRenderCommandSetVertexBufferOffset;
     } else if constexpr (stage == PipelineStage::Pixel) {
@@ -381,17 +380,17 @@ ArgumentEncodingContext::encodeShaderResources(
     auto &cmd = encodeComputeCommand<wmtcmd_compute_setbufferoffset>();
     cmd.type = WMTComputeCommandSetBufferOffset;
     cmd.offset = getFinalArgumentBufferOffset<true>(offset);
-    cmd.index = 30;
+    cmd.index = SM50_BINDING_INDEX_ARGUMENT_TABLE;
   } else {
     auto &cmd = encodeRenderCommand<wmtcmd_render_setbufferoffset>();
     cmd.offset = getFinalArgumentBufferOffset(offset);
-    cmd.index = 30;
+    cmd.index = SM50_BINDING_INDEX_ARGUMENT_TABLE;
     if constexpr (stage == PipelineStage::Vertex) {
       if constexpr (kind == PipelineKind::Geometry)
         cmd.type = WMTRenderCommandSetObjectBufferOffset;
       else if constexpr (kind == PipelineKind::Tessellation) {
         cmd.type = WMTRenderCommandSetObjectBufferOffset;
-        cmd.index = 28;
+        cmd.index = SM50_BINDING_INDEX_ARGUMENT_TABLE2;
       } else
         cmd.type = WMTRenderCommandSetVertexBufferOffset;
     } else if constexpr (stage == PipelineStage::Pixel) {
@@ -923,22 +922,22 @@ ArgumentEncodingContext::flushCommands(WMT::CommandBuffer cmdbuf, uint64_t seqId
           [&](auto id) { encoder.waitForFence(fence_pool_[id], WMTRenderStagePreRaster); },
           [&](auto id) { encoder.waitForFence(fence_pool_[id], WMTRenderStageFragment); }
       );
-      encoder.setVertexBuffer(gpu_buffer_, 0, 16);
-      encoder.setVertexBuffer(gpu_buffer_, 0, 29);
-      encoder.setVertexBuffer(gpu_buffer_, 0, 30);
-      encoder.setFragmentBuffer(gpu_buffer_, 0, 29);
-      encoder.setFragmentBuffer(gpu_buffer_, 0, 30);
+      encoder.setVertexBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_VERTEX_BUFFER);
+      encoder.setVertexBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_CONSTANT_BUFFER);
+      encoder.setVertexBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_ARGUMENT_TABLE);
+      encoder.setFragmentBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_CONSTANT_BUFFER);
+      encoder.setFragmentBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_ARGUMENT_TABLE);
       if (data->use_geometry || data->use_tessellation) {
-        encoder.setObjectBuffer(gpu_buffer_, 0, 16);
-        encoder.setObjectBuffer(gpu_buffer_, 0, 21); // draw arguments
+        encoder.setObjectBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_VERTEX_BUFFER);
+        encoder.setObjectBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_DRAW_ARGUMENTS);
         if (data->use_tessellation) {
-          encoder.setObjectBuffer(gpu_buffer_, 0, 27);
-          encoder.setObjectBuffer(gpu_buffer_, 0, 28);
+          encoder.setObjectBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_CONSTANT_BUFFER2);
+          encoder.setObjectBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_ARGUMENT_TABLE2);
         }
-        encoder.setObjectBuffer(gpu_buffer_, 0, 29);
-        encoder.setObjectBuffer(gpu_buffer_, 0, 30);
-        encoder.setMeshBuffer(gpu_buffer_, 0, 29);
-        encoder.setMeshBuffer(gpu_buffer_, 0, 30);
+        encoder.setObjectBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_CONSTANT_BUFFER);
+        encoder.setObjectBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_ARGUMENT_TABLE);
+        encoder.setMeshBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_CONSTANT_BUFFER);
+        encoder.setMeshBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_ARGUMENT_TABLE);
       }
       if (data->gs_arg_marshal_tasks.size()) {
         auto task_count = data->gs_arg_marshal_tasks.size();
@@ -1017,9 +1016,9 @@ ArgumentEncodingContext::flushCommands(WMT::CommandBuffer cmdbuf, uint64_t seqId
       setcmd.next.set(nullptr);
       setcmd.buffer = data->allocated_argbuf;
       setcmd.offset = 0;
-      setcmd.index = 29;
+      setcmd.index = SM50_BINDING_INDEX_CONSTANT_BUFFER;
       encoder.encodeCommands((const wmtcmd_compute_nop *)&setcmd);
-      setcmd.index = 30;
+      setcmd.index = SM50_BINDING_INDEX_ARGUMENT_TABLE;
       encoder.encodeCommands((const wmtcmd_compute_nop *)&setcmd);
       encoder.encodeCommands(&data->cmd_head);
       data->fence_update.forEach([&](auto id) { encoder.updateFence(fence_pool_[id]); });

@@ -242,7 +242,10 @@ convert_dxbc_vertex_hull_shader(
     }
   }
 
-  setup_binding_table(&vertex_shader_info, resource_map_vs, func_signature, module, 27, 28);
+  setup_binding_table(
+      &vertex_shader_info, resource_map_vs, func_signature, module, SM50_BINDING_INDEX_CONSTANT_BUFFER2,
+      SM50_BINDING_INDEX_ARGUMENT_TABLE2
+  );
   setup_binding_table(&hull_shader_info, resource_map_hs, func_signature, module);
 
   uint32_t threads_per_patch = next_pow2(pHullStage->hull_maximum_threads_per_patch);
@@ -284,7 +287,7 @@ convert_dxbc_vertex_hull_shader(
   func_signature.DefineInput(air::InputMeshGridProperties{});
   uint32_t draw_argument_idx = func_signature.DefineInput(air::ArgumentBindingBuffer{
       .buffer_size = {},
-      .location_index = 21,
+      .location_index = SM50_BINDING_INDEX_DRAW_ARGUMENTS,
       .array_size = 0,
       .memory_access = air::MemoryAccess::read,
       .address_space = air::AddressSpace::constant,
@@ -299,7 +302,7 @@ convert_dxbc_vertex_hull_shader(
   if (is_indexed_draw) {
     index_buffer_idx = func_signature.DefineInput(air::ArgumentBindingBuffer{
         .buffer_size = {},
-        .location_index = 20,
+        .location_index = SM50_BINDING_INDEX_INDEX_BUFFER,
         .array_size = 0,
         .memory_access = air::MemoryAccess::read,
         .address_space = air::AddressSpace::device,

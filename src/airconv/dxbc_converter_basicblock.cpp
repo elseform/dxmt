@@ -378,7 +378,7 @@ IREffect pull_vertex_input(
 ) {
   auto vbuf_table = func_signature.DefineInput(air::ArgumentBindingBuffer{
     .buffer_size = {},
-    .location_index = 16,
+    .location_index = SM50_BINDING_INDEX_VERTEX_BUFFER,
     .array_size = 0,
     .memory_access = air::MemoryAccess::read,
     .address_space = air::AddressSpace::constant,

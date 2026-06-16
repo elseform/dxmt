@@ -124,11 +124,11 @@ void setup_binding_table(
       module.getContext(), module.getDataLayout()
     );
     std::string arg_name = "binding_table";
-    if (argbuffer_slot != kArgumentBufferBindIndex)
+    if (argbuffer_slot != SM50_BINDING_INDEX_ARGUMENT_TABLE)
       arg_name += std::to_string(argbuffer_slot);
     binding_table_index =
       func_signature.DefineInput(air::ArgumentBindingIndirectBuffer{
-        .location_index = argbuffer_slot, // kArgumentBufferBindIndex
+        .location_index = argbuffer_slot,
         .array_size = 1,
         .memory_access = air::MemoryAccess::read,
         .address_space = air::AddressSpace::constant,
@@ -142,11 +142,11 @@ void setup_binding_table(
       module.getContext(), module.getDataLayout()
     );
     std::string arg_name = "cbuffer_table";
-    if (argbuffer_constant_slot != kConstantBufferBindIndex)
+    if (argbuffer_constant_slot != SM50_BINDING_INDEX_CONSTANT_BUFFER)
       arg_name += std::to_string(argbuffer_constant_slot);
     cbuf_table_index =
       func_signature.DefineInput(air::ArgumentBindingIndirectBuffer{
-        .location_index = argbuffer_constant_slot, // kConstantBufferBindIndex
+        .location_index = argbuffer_constant_slot,
         .array_size = 1,
         .memory_access = air::MemoryAccess::read,
         .address_space = air::AddressSpace::constant,
@@ -700,7 +700,7 @@ llvm::Error convert_dxbc_vertex_shader(
     auto vid = func_signature.DefineInput(air::InputVertexID{});
     auto slot_0 = func_signature.DefineInput(air::ArgumentBindingBuffer{
       .buffer_size = {},
-      .location_index = 20,
+      .location_index = SM50_BINDING_INDEX_STREAM_OUTPUT0,
       .array_size = 0,
       .memory_access = air::MemoryAccess::write,
       .address_space = air::AddressSpace::device,

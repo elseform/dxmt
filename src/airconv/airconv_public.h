@@ -7,22 +7,6 @@
 
 #ifdef __cplusplus
 #include <string>
-enum class ShaderType {
-  Vertex,
-  /* Metal: fragment function */
-  Pixel,
-  /* Metal: kernel function */
-  Compute,
-  /* Not present in Metal */
-  Hull,
-  /* Metal: post-vertex function */
-  Domain,
-  /* Not present in Metal */
-  Geometry,
-  Mesh,
-  /* Metal: object function */
-  Amplification,
-};
 
 enum class SM50BindingType : uint32_t {
   ConstantBuffer,
@@ -31,9 +15,21 @@ enum class SM50BindingType : uint32_t {
   UAV,
 };
 #else
-typedef uint32_t ShaderType;
 typedef uint32_t SM50BindingType;
 #endif
+
+enum SM50_BINDING_INDEX: uint32_t {
+  SM50_BINDING_INDEX_CONSTANT_BUFFER = 0,
+  SM50_BINDING_INDEX_ARGUMENT_TABLE = 1,
+  SM50_BINDING_INDEX_VERTEX_BUFFER = 2,
+  SM50_BINDING_INDEX_INDEX_BUFFER = 3,
+  SM50_BINDING_INDEX_DRAW_ARGUMENTS = 4,
+  SM50_BINDING_INDEX_INDIRECT_ARGUMENTS = 4,
+  SM50_BINDING_INDEX_STREAM_OUTPUT0 = 5,
+  /* For multiple stages in the same shader function */
+  SM50_BINDING_INDEX_CONSTANT_BUFFER2 = 6,
+  SM50_BINDING_INDEX_ARGUMENT_TABLE2 = 7,
+};
 
 enum MTL_SM50_SHADER_ARGUMENT_FLAG : uint32_t {
   MTL_SM50_SHADER_ARGUMENT_BUFFER = 1 << 0,
