@@ -68,4 +68,6 @@ bool IsUnorm8RenderTargetFormat(WMTPixelFormat format);
 
 bool IsIntegerFormat(WMTPixelFormat format);
 
+void SanitizeRTVClearColor(WMTPixelFormat format, WMTClearColor &color);
+
 } // namespace dxmt

@@ -429,6 +429,7 @@ ArgumentEncodingContext::clearColor(Rc<Texture> &&texture, uint64_t viewId, unsi
   encoder_info->fence_update = {encoder_info->id};
   encoder_info->clear_dsv = 0;
   encoder_info->color = color;
+  SanitizeRTVClearColor(texture->pixelFormat(viewId), encoder_info->color);
   encoder_info->array_length = arrayLength;
   encoder_info->width = texture->width();
   encoder_info->height = texture->height();

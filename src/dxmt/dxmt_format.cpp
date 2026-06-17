@@ -3,6 +3,7 @@
 #include "util_error.hpp"
 #include "dxgi.h"
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 
 #define APPEND_CAP(format, caps) textureCapabilities[format] = textureCapabilities[format] | caps;
@@ -1343,6 +1344,87 @@ IsIntegerFormat(WMTPixelFormat format) {
     break;
   }
   return false;
+}
+
+double
+ClampFloatRTVClearColor(float val, float min, float max) {
+  if (std::isinf(val))
+    return val;
+  return std::clamp(val, min, max);
+}
+
+double
+ClampIntegerRTVClearColor(float val, int64_t min, int64_t max) {
+  if (std::isnan(val))
+    return 0;
+  return std::clamp<double>(val, min, max);
+}
+
+constexpr double kHalfMin = -65504;
+constexpr double kHalfMax = 65504;
+
+void
+SanitizeRTVClearColor(WMTPixelFormat format, WMTClearColor &color) {
+  switch (format) {
+  case WMTPixelFormatR16Float:
+  case WMTPixelFormatRG16Float:
+  case WMTPixelFormatRGBA16Float:
+    color.r = ClampFloatRTVClearColor(color.r, kHalfMin, kHalfMax);
+    color.g = ClampFloatRTVClearColor(color.g, kHalfMin, kHalfMax);
+    color.b = ClampFloatRTVClearColor(color.b, kHalfMin, kHalfMax);
+    color.a = ClampFloatRTVClearColor(color.a, kHalfMin, kHalfMax);
+    break;
+  case WMTPixelFormatR8Uint:
+  case WMTPixelFormatRG8Uint:
+  case WMTPixelFormatRGBA8Uint:
+    color.r = ClampIntegerRTVClearColor(color.r, 0, UINT8_MAX);
+    color.g = ClampIntegerRTVClearColor(color.g, 0, UINT8_MAX);
+    color.b = ClampIntegerRTVClearColor(color.b, 0, UINT8_MAX);
+    color.a = ClampIntegerRTVClearColor(color.a, 0, UINT8_MAX);
+    break;
+  case WMTPixelFormatR16Uint:
+  case WMTPixelFormatRG16Uint:
+  case WMTPixelFormatRGBA16Uint:
+    color.r = ClampIntegerRTVClearColor(color.r, 0, UINT16_MAX);
+    color.g = ClampIntegerRTVClearColor(color.g, 0, UINT16_MAX);
+    color.b = ClampIntegerRTVClearColor(color.b, 0, UINT16_MAX);
+    color.a = ClampIntegerRTVClearColor(color.a, 0, UINT16_MAX);
+    break;
+  case WMTPixelFormatR32Uint:
+  case WMTPixelFormatRG32Uint:
+  case WMTPixelFormatRGBA32Uint:
+    color.r = ClampIntegerRTVClearColor(color.r, 0, UINT32_MAX);
+    color.g = ClampIntegerRTVClearColor(color.g, 0, UINT32_MAX);
+    color.b = ClampIntegerRTVClearColor(color.b, 0, UINT32_MAX);
+    color.a = ClampIntegerRTVClearColor(color.a, 0, UINT32_MAX);
+    break;
+  case WMTPixelFormatR8Sint:
+  case WMTPixelFormatRG8Sint:
+  case WMTPixelFormatRGBA8Sint:
+    color.r = ClampIntegerRTVClearColor(color.r, INT8_MIN, INT8_MAX);
+    color.g = ClampIntegerRTVClearColor(color.g, INT8_MIN, INT8_MAX);
+    color.b = ClampIntegerRTVClearColor(color.b, INT8_MIN, INT8_MAX);
+    color.a = ClampIntegerRTVClearColor(color.a, INT8_MIN, INT8_MAX);
+    break;
+  case WMTPixelFormatR16Sint:
+  case WMTPixelFormatRG16Sint:
+  case WMTPixelFormatRGBA16Sint:
+    color.r = ClampIntegerRTVClearColor(color.r, INT16_MIN, INT16_MAX);
+    color.g = ClampIntegerRTVClearColor(color.g, INT16_MIN, INT16_MAX);
+    color.b = ClampIntegerRTVClearColor(color.b, INT16_MIN, INT16_MAX);
+    color.a = ClampIntegerRTVClearColor(color.a, INT16_MIN, INT16_MAX);
+    break;
+  case WMTPixelFormatR32Sint:
+  case WMTPixelFormatRG32Sint:
+  case WMTPixelFormatRGBA32Sint:
+    color.r = ClampIntegerRTVClearColor(color.r, INT32_MIN, INT32_MAX);
+    color.g = ClampIntegerRTVClearColor(color.g, INT32_MIN, INT32_MAX);
+    color.b = ClampIntegerRTVClearColor(color.b, INT32_MIN, INT32_MAX);
+    color.a = ClampIntegerRTVClearColor(color.a, INT32_MIN, INT32_MAX);
+    break;
+  default:
+    break;
+  }
 }
 
 } // namespace dxmt
