@@ -118,6 +118,50 @@ ArgumentEncodingContext::encodeVertexBuffers(uint32_t slot_mask, uint64_t offset
       cmd.type = WMTRenderCommandSetVertexBufferOffset;
   }
 }
+struct SO_BUFFER_ENTRY {
+  uint64_t buffer_handle;
+  uint64_t counter_handle;
+};
+
+template <>
+void
+ArgumentEncodingContext::encodeStreamOutputBuffers<PipelineKind::Ordinary>(uint64_t offset) {
+
+  SO_BUFFER_ENTRY *entries = getMappedArgumentBuffer<SO_BUFFER_ENTRY>(offset);
+
+  for (unsigned slot = 0; slot < kStreamOutputSlots; slot++) {
+    auto &state = so_[slot];
+    auto &buffer = state.buffer;
+    if (!buffer.ptr()) {
+      entries[slot].buffer_handle = 0;
+      entries[slot].counter_handle = 0;
+      continue;
+    }
+    auto [buffer_alloc, buffer_offset] = access<PipelineStage::Vertex>(buffer, state.offset, 0, ResourceAccess::Write);
+    entries[slot].buffer_handle = buffer_alloc->gpuAddress() + buffer_offset + state.offset;
+    entries[slot].counter_handle = 0; // TODO(stream-output): counter & buffer_filled_size
+    makeResident<PipelineStage::Vertex, PipelineKind::Ordinary>(buffer.ptr(), false, true);
+  };
+  {
+    auto &cmd = encodeRenderCommand<wmtcmd_render_setbufferoffset>();
+    cmd.offset = getFinalArgumentBufferOffset(offset);
+    cmd.index = SM50_BINDING_INDEX_STREAM_OUTPUT0;
+    cmd.type = WMTRenderCommandSetVertexBufferOffset;
+  }
+
+  currentRenderEncoder()->use_emulated_so = 1;
+}
+
+template <>
+void
+ArgumentEncodingContext::encodeStreamOutputBuffers<PipelineKind::Tessellation>(uint64_t offset) {
+  ERR("unimplemented stream output from tessellation pipeline");
+}
+template <>
+void
+ArgumentEncodingContext::encodeStreamOutputBuffers<PipelineKind::Geometry>(uint64_t offset) {
+  ERR("unimplemented stream output from geometry pipeline");
+}
 
 template void ArgumentEncodingContext::encodeConstantBuffers<PipelineStage::Vertex, PipelineKind::Ordinary>(
     const MTL_SHADER_REFLECTION *reflection, const MTL_SM50_SHADER_ARGUMENT *constant_buffers,
@@ -926,6 +970,8 @@ ArgumentEncodingContext::flushCommands(WMT::CommandBuffer cmdbuf, uint64_t seqId
       encoder.setVertexBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_VERTEX_BUFFER);
       encoder.setVertexBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_CONSTANT_BUFFER);
       encoder.setVertexBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_ARGUMENT_TABLE);
+      if (data->use_emulated_so)
+        encoder.setVertexBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_STREAM_OUTPUT0);
       encoder.setFragmentBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_CONSTANT_BUFFER);
       encoder.setFragmentBuffer(gpu_buffer_, 0, SM50_BINDING_INDEX_ARGUMENT_TABLE);
       if (data->use_geometry || data->use_tessellation) {
@@ -1357,6 +1403,7 @@ ArgumentEncodingContext::checkEncoderRelation(EncoderData *former, EncoderData *
       }
       r1->use_tessellation = r0->use_tessellation || r1->use_tessellation;
       r1->use_geometry = r0->use_geometry || r1->use_geometry;
+      r1->use_emulated_so = r0->use_emulated_so || r1->use_emulated_so;
       std::move(
         r1->gs_arg_marshal_tasks.begin(),
         r1->gs_arg_marshal_tasks.end(),

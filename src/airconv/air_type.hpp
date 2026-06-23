@@ -41,6 +41,7 @@ public:
   llvm::Type *_dxmt_vertex_buffer_entry;
   llvm::Type *_dxmt_draw_arguments;
   llvm::Type *_dxmt_draw_indexed_arguments;
+  llvm::Type *_dxmt_stream_output_buffer_entry;
 
   llvm::Type *_sampler;
 

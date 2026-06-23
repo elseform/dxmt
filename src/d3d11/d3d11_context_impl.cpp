@@ -2239,11 +2239,8 @@ public:
     if (!ValidateMultiSOTargets(NumBuffers, ppSOTargets))
       return;
 
-    if (NumBuffers == 0) {
-      NumBuffers = 4; // see msdn description of SOSetTargets
-    }
-    for (unsigned slot = 0; slot < NumBuffers; slot++) {
-      auto pBuffer = ppSOTargets ? GetResourceCommon(ppSOTargets[slot]) : nullptr;
+    for (unsigned slot = 0; slot < D3D11_SO_BUFFER_SLOT_COUNT; slot++) {
+      auto pBuffer = slot < NumBuffers ? GetResourceCommon(ppSOTargets[slot]) : nullptr;
       if (pBuffer && (pBuffer->bindFlags() & D3D11_BIND_STREAM_OUTPUT)) {
         bool replaced = false;
         auto &entry = state_.StreamOutput.Targets.bind(slot, {pBuffer}, replaced);
@@ -2252,6 +2249,9 @@ public:
           if (offset != entry.Offset) {
             state_.StreamOutput.Targets.set_dirty(slot);
             entry.Offset = offset;
+            EmitST([=, buffer = pBuffer->buffer()](ArgumentEncodingContext &enc) mutable {
+              enc.bindStreamOutputBufferOffset(slot, offset);
+            });
           }
           continue;
         }
@@ -2266,8 +2266,14 @@ public:
          * - DSV can't even be a buffer
          * - RTV is questionable: we don't support buffer-backed RTV at the moment
          */
+        EmitST([=, buffer = pBuffer->buffer()](ArgumentEncodingContext &enc) mutable {
+          enc.bindStreamOutputBuffer(slot, entry.Offset, forward_rc(buffer), {});
+        });
       } else {
         state_.StreamOutput.Targets.unbind(slot);
+        EmitST([=](ArgumentEncodingContext &enc) mutable {
+          enc.bindStreamOutputBuffer(slot, 0, {}, {});
+        });
       }
     }
   }
@@ -2279,7 +2285,7 @@ public:
 
     if (!ppSOTargets)
       return;
-    for (unsigned i = 0; i < std::min(4u, NumBuffers); i++) {
+    for (unsigned i = 0; i < std::min<uint32_t>(D3D11_SO_BUFFER_SLOT_COUNT, NumBuffers); i++) {
       if (state_.StreamOutput.Targets.test_bound(i)) {
         state_.StreamOutput.Targets[i].Buffer->QueryInterface(IID_PPV_ARGS(&ppSOTargets[i]));
       } else {
@@ -2292,7 +2298,7 @@ public:
                                UINT *pOffsets) override {
     std::lock_guard<mutex_t> lock(mutex);
 
-    for (unsigned i = 0; i < std::min(4u, NumBuffers); i++) {
+    for (unsigned i = 0; i < std::min<uint32_t>(D3D11_SO_BUFFER_SLOT_COUNT, NumBuffers); i++) {
       if (state_.StreamOutput.Targets.test_bound(i)) {
         if (ppSOTargets)
           state_.StreamOutput.Targets[i].Buffer->QueryInterface(riid, &ppSOTargets[i]);
@@ -4411,6 +4417,10 @@ public:
     state_.ShaderStages[PipelineStage::Geometry].Samplers.set_dirty();
     state_.ShaderStages[PipelineStage::Geometry].SRVs.set_dirty();
     state_.InputAssembler.VertexBuffers.set_dirty();
+    {
+      if (state_.StreamOutput.Targets.any_bound())
+        state_.StreamOutput.Targets.set_dirty();
+    }
     state_.OutputMerger.UAVs.set_dirty();
     dirty_state.set(
         DirtyState::BlendFactorAndStencilRef, DirtyState::RasterizerState, DirtyState::DepthStencilState,
@@ -4989,56 +4999,21 @@ public:
 
   void
   UpdateSOTargets() {
-    if (!state_.ShaderStages[PipelineStage::Geometry].Shader) {
+    if (!state_.ShaderStages[PipelineStage::Geometry].Shader)
       return;
-    }
-    /**
-    FIXME: support all slots
-     */
-    if (!state_.StreamOutput.Targets.test_dirty(0)) {
+    if (!state_.StreamOutput.Targets.any_dirty())
       return;
-    }
-    if (state_.StreamOutput.Targets.test_bound(0)) {
-      auto &so_slot0 = state_.StreamOutput.Targets[0];
-      if (so_slot0.Offset == 0xFFFFFFFF) {
-        EmitST([slot0 = so_slot0.Buffer->buffer()](ArgumentEncodingContext &enc) {
-          auto [buffer, buffer_offset] =
-              enc.access<PipelineStage::Geometry>(slot0, 0, slot0->length(), ResourceAccess::Write);
-          auto &cmd = enc.encodeRenderCommand<wmtcmd_render_setbuffer>();
-          cmd.type = WMTRenderCommandSetVertexBuffer;
-          cmd.buffer = buffer->buffer();
-          cmd.offset = buffer_offset;
-          cmd.index = SM50_BINDING_INDEX_STREAM_OUTPUT0;
-          enc.makeResident<PipelineStage::Vertex, PipelineKind::Ordinary>(slot0.ptr(), false, true);
-          enc.setCompatibilityFlag(FeatureCompatibility::UnsupportedStreamOutputAppending);
-        });
-      } else {
-        EmitST([slot0 = so_slot0.Buffer->buffer(), offset = so_slot0.Offset](ArgumentEncodingContext &enc) {
-          auto [buffer, buffer_offset] =
-              enc.access<PipelineStage::Geometry>(slot0, 0, slot0->length(), ResourceAccess::Write);
-          auto &cmd = enc.encodeRenderCommand<wmtcmd_render_setbuffer>();
-          cmd.type = WMTRenderCommandSetVertexBuffer;
-          cmd.buffer = buffer->buffer();
-          cmd.offset = offset + buffer_offset;
-          cmd.index = SM50_BINDING_INDEX_STREAM_OUTPUT0;
-          enc.makeResident<PipelineStage::Vertex, PipelineKind::Ordinary>(slot0.ptr(), false, true);
-        });
-      }
-    } else {
-      EmitST([](ArgumentEncodingContext &enc) {
-        auto &cmd = enc.encodeRenderCommand<wmtcmd_render_setbuffer>();
-        cmd.type = WMTRenderCommandSetVertexBuffer;
-        cmd.buffer = NULL_OBJECT_HANDLE;
-        cmd.offset = 0;
-        cmd.index = SM50_BINDING_INDEX_STREAM_OUTPUT0;
-      });
-    }
-    state_.StreamOutput.Targets.clear_dirty(0);
-    if (state_.StreamOutput.Targets.any_dirty()) {
-      EmitST([](ArgumentEncodingContext &enc) {
-        enc.setCompatibilityFlag(FeatureCompatibility::UnsupportedMultipleStreamOutput);
-      });
-    }
+
+    auto offset = PreAllocateArgumentBuffer(16 /* size of two pointer */ * kStreamOutputSlots, 32);
+
+    if (cmdbuf_state == CommandBufferState::RenderPipelineReady)
+      EmitST([=](ArgumentEncodingContext &enc) { enc.encodeStreamOutputBuffers<PipelineKind::Ordinary>(offset); });
+    else if (cmdbuf_state == CommandBufferState::TessellationRenderPipelineReady)
+      EmitST([=](ArgumentEncodingContext &enc) { enc.encodeStreamOutputBuffers<PipelineKind::Tessellation>(offset); });
+    else if (cmdbuf_state == CommandBufferState::GeometryRenderPipelineReady)
+      EmitST([=](ArgumentEncodingContext &enc) { enc.encodeStreamOutputBuffers<PipelineKind::Geometry>(offset); });
+
+    state_.StreamOutput.Targets.clear_dirty();
   }
 
   template <PipelineStage Stage>

@@ -67,6 +67,7 @@ constexpr unsigned kStages = 6;
 constexpr unsigned kSRVBindings = 128;
 constexpr unsigned kUAVBindings = 64;
 constexpr unsigned kVertexBufferSlots = 32;
+constexpr unsigned kStreamOutputSlots = 4;
 
 struct VertexBufferBinding {
   Rc<Buffer> buffer;
@@ -96,6 +97,12 @@ struct UnorderedAccessViewBinding {
   Rc<Texture> texture;
   Rc<Counter> counter;
   BufferSlice slice;
+};
+
+struct StreamOutputBinding {
+  Rc<Buffer> buffer;
+  uint64_t offset;
+  Rc<Buffer> counter;
 };
 
 enum class EncoderType {
@@ -199,6 +206,7 @@ struct RenderEncoderData : EncoderData {
   bool use_visibility_result = 0;
   bool use_tessellation = 0;
   bool use_geometry = 0;
+  bool use_emulated_so = 0;
   TileBarrierPSOKey tile_barrier_pso_key = {};
   WMT::RenderPipelineState last_pso = {};
 };
@@ -464,8 +472,17 @@ public:
 
   template <PipelineStage stage> void bindOutputTexture(unsigned slot, Rc<Texture> &&texture, uint64_t viewId);
 
-  void bindStreamOutputBuffer(unsigned slot, unsigned offset, Rc<Buffer> &&buffer);
-  void bindStreamOutputBufferOffset(unsigned slot, unsigned offset);
+  void bindStreamOutputBuffer(unsigned slot, unsigned offset, Rc<Buffer> &&buffer, Rc<Buffer> &&counter) {
+    auto &entry = so_[slot];
+    entry.buffer = std::move(buffer);
+    entry.offset = offset;
+    entry.counter = std::move(counter);
+  }
+  
+  void bindStreamOutputBufferOffset(unsigned slot, unsigned offset) {
+    auto &entry = so_[slot];
+    entry.offset = offset;
+  }
 
   void
   bindVertexBuffer(unsigned slot, unsigned offset, unsigned stride, Rc<Buffer> &&buffer) {
@@ -515,6 +532,7 @@ public:
       const MTL_SHADER_REFLECTION *reflection, const MTL_SM50_SHADER_ARGUMENT *arguments,
       uint64_t argument_buffer_offset
   );
+  template <PipelineKind kind> void encodeStreamOutputBuffers(uint64_t offset);
 
   void retainAllocation(Allocation* allocation);
 
@@ -840,6 +858,8 @@ private:
 
   std::array<UnorderedAccessViewBinding, kUAVBindings> om_uav_;
   std::array<UnorderedAccessViewBinding, kUAVBindings> cs_uav_;
+
+  std::array<StreamOutputBinding, kStreamOutputSlots> so_;
 
   WMT::Reference<WMT::SamplerState> dummy_sampler_;
   WMTSamplerInfo dummy_sampler_info_;

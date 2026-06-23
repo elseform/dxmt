@@ -698,21 +698,27 @@ llvm::Error convert_dxbc_vertex_shader(
   if (vertex_so) {
     auto bv = func_signature.DefineInput(air::InputBaseVertex{});
     auto vid = func_signature.DefineInput(air::InputVertexID{});
-    auto slot_0 = func_signature.DefineInput(air::ArgumentBindingBuffer{
+    auto so_table = func_signature.DefineInput(air::ArgumentBindingBuffer{
       .buffer_size = {},
       .location_index = SM50_BINDING_INDEX_STREAM_OUTPUT0,
       .array_size = 0,
-      .memory_access = air::MemoryAccess::write,
-      .address_space = air::AddressSpace::device,
+      .memory_access = air::MemoryAccess::read,
+      .address_space = air::AddressSpace::constant,
       .type = air::MSLUint{},
-      .arg_name = "so_slot0",
+      .arg_name = "stream_outputs",
       .raster_order_group = {}
     });
     epilogue << make_irvalue([=](struct context ctx) {
       auto &builder = ctx.builder;
       auto base_vertex = ctx.function->getArg(bv);
       auto vertex_id = ctx.function->getArg(vid);
-      auto slot0 = ctx.function->getArg(slot_0);
+      auto so_entries_type = ctx.types._dxmt_stream_output_buffer_entry;
+      auto so_entries = builder.CreateBitCast(
+          ctx.function->getArg(so_table), so_entries_type->getPointerTo((uint32_t)air::AddressSpace::constant)
+      );
+      auto slot0_entry =
+          builder.CreateLoad(so_entries_type, builder.CreateConstInBoundsGEP1_32(so_entries_type, so_entries, 0));
+      auto slot0 = builder.CreateExtractValue(slot0_entry, {0});
       auto adjusted_vertex_id = builder.CreateSub(vertex_id, base_vertex);
       auto output_regs = builder.CreateBitOrPointerCast(
         ctx.resource.output.ptr_int4, llvm::PointerType::get(ctx.types._int, 0)
@@ -728,7 +734,7 @@ llvm::Error convert_dxbc_vertex_shader(
         auto target_offset = ctx.builder.CreateAdd(
           ctx.builder.CreateMul(
             adjusted_vertex_id,
-            ctx.builder.getInt32(vertex_so->strides[element.output_slot])
+            ctx.builder.getInt32(vertex_so->strides[element.output_slot /* expected to be 0 */])
           ),
           ctx.builder.getInt32(element.offset)
         );
