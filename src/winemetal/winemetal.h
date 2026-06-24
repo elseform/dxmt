@@ -433,27 +433,49 @@ enum WMTPixelFormat : uint32_t {
   WMTPixelFormatX32_Stencil8 = 261,
   WMTPixelFormatX24_Stencil8 = 262,
 
-  WMTPixelFormatAlphaIsOne = 0x00800000,
+  /**
+   * Extended (swizzled) format
+   *
+   * NOTE: DO NOT use these formats with a non-default (RGBA) swizzle property in `newTextureView` view descriptor
+   * use one of them
+   * - an ordinary format with custom swizzle
+   * - an extended format with the default rgba swizzle
+   * just don't mix them, otherwise it would be really confusing
+   */
+
+  WMTPixelFormatCustomSwizzle = 0b111111111111u << 12,
+
+  WMTPixelFormatAlphaIsOne = 0b000000000010u << 12,
+  WMTPixelFormatR001Swizzle = 0b000011010010u << 12,
+  WMTPixelFormat0R01Swizzle = 0b100101010010u << 12,
+  WMTPixelFormatGBARSwizzle = 0b001001001011u << 12,
+  WMTPixelFormatRGB1Swizzle = WMTPixelFormatAlphaIsOne,
+
   WMTPixelFormatBGRX8Unorm = WMTPixelFormatAlphaIsOne | WMTPixelFormatBGRA8Unorm,
   WMTPixelFormatBGRX8Unorm_sRGB = WMTPixelFormatAlphaIsOne | WMTPixelFormatBGRA8Unorm_sRGB,
 
-  WMTPixelFormatRGB1Swizzle = WMTPixelFormatAlphaIsOne,
-  WMTPixelFormatR001Swizzle = 0x00400000,
-  WMTPixelFormat0R01Swizzle = 0x00200000,
-
   WMTPixelFormatR32X8X32 = WMTPixelFormatR001Swizzle | WMTPixelFormatDepth32Float_Stencil8,
-  // WMTPixelFormatR24X8 = WMTPixelFormatR001Swizzle | WMTPixelFormatDepth24Unorm_Stencil8,
   WMTPixelFormatX32G8X32 = WMTPixelFormat0R01Swizzle | WMTPixelFormatX32_Stencil8,
-  // WMTPixelFormatX24G8 = WMTPixelFormat0R01Swizzle | WMTPixelFormatX24_Stencil8,
-
-  WMTPixelFormatGBARSwizzle = 0x00100000,
 
   WMTPixelFormatBGRA4Unorm = WMTPixelFormatGBARSwizzle | WMTPixelFormatABGR4Unorm,
-
-  WMTPixelFormatCustomSwizzle = WMTPixelFormatRGB1Swizzle | WMTPixelFormatR001Swizzle | WMTPixelFormat0R01Swizzle | WMTPixelFormatGBARSwizzle,
 };
 
-#define ORIGINAL_FORMAT(format) (format & ~WMTPixelFormatCustomSwizzle)
+#define ORIGINAL_FORMAT(format) ((format) & ~WMTPixelFormatCustomSwizzle)
+
+#define DECODE_FORMAT_COMPONENT_SWIZZLE(format, component, base) ((base + ((format >> (21 - 3 * component)) & 0x7)) % 6)
+
+#define GET_SWIZZLE_RED(format) DECODE_FORMAT_COMPONENT_SWIZZLE(format, 0, 2 /* TextureSwizzleRed */)
+#define GET_SWIZZLE_GREEN(format) DECODE_FORMAT_COMPONENT_SWIZZLE(format, 1, 3 /* TextureSwizzleGreen */)
+#define GET_SWIZZLE_BLUE(format) DECODE_FORMAT_COMPONENT_SWIZZLE(format, 2, 4 /* TextureSwizzleBlue */)
+#define GET_SWIZZLE_ALPHA(format) DECODE_FORMAT_COMPONENT_SWIZZLE(format, 3, 5 /* TextureSwizzleAlpha */)
+
+#define ENCODE_FORMAT_COMPONENT_OFFSET(target, base) (((target) + (6 - base)) % 6)
+
+#define ENCODE_FORMAT_SWIZZLE(base_format, r, g, b, a)                                                                 \
+  ((base_format) & 0xfff) | (ENCODE_FORMAT_COMPONENT_OFFSET(r, 2 /* TextureSwizzleRed */) << 21) |                     \
+      (ENCODE_FORMAT_COMPONENT_OFFSET(g, 3 /* TextureSwizzleGreen */) << 18) |                                         \
+      (ENCODE_FORMAT_COMPONENT_OFFSET(b, 4 /* TextureSwizzleBlue */) << 15) |                                          \
+      (ENCODE_FORMAT_COMPONENT_OFFSET(a, 5 /* TextureSwizzleAlpha */) << 12)
 
 enum WMTTextureType : uint32_t {
   WMTTextureType1D = 0,

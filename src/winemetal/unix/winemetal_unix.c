@@ -303,30 +303,11 @@ _MTLBuffer_newTexture(void *obj) {
 
 static inline MTLTextureSwizzleChannels
 to_metal_swizzle(struct WMTTextureSwizzleChannels swizzle, enum WMTPixelFormat format) {
-  if (format & WMTPixelFormatRGB1Swizzle) {
-    return MTLTextureSwizzleChannelsMake(
-        (MTLTextureSwizzle)swizzle.r, (MTLTextureSwizzle)swizzle.g, (MTLTextureSwizzle)swizzle.b, MTLTextureSwizzleOne
-    );
-  }
-  if (format & WMTPixelFormatR001Swizzle) {
-    return MTLTextureSwizzleChannelsMake(
-        (MTLTextureSwizzle)swizzle.r, MTLTextureSwizzleZero, MTLTextureSwizzleZero, MTLTextureSwizzleOne
-    );
-  }
-  if (format & WMTPixelFormat0R01Swizzle) {
-    return MTLTextureSwizzleChannelsMake(
-        MTLTextureSwizzleOne, (MTLTextureSwizzle)swizzle.r, MTLTextureSwizzleOne, MTLTextureSwizzleOne
-    );
-  }
-  if (format & WMTPixelFormatGBARSwizzle) {
-    return MTLTextureSwizzleChannelsMake(
-        (MTLTextureSwizzle)swizzle.g, (MTLTextureSwizzle)swizzle.b, (MTLTextureSwizzle)swizzle.a,
-        (MTLTextureSwizzle)swizzle.r
-    );
-  }
   return MTLTextureSwizzleChannelsMake(
-      (MTLTextureSwizzle)swizzle.r, (MTLTextureSwizzle)swizzle.g, (MTLTextureSwizzle)swizzle.b,
-      (MTLTextureSwizzle)swizzle.a
+      (MTLTextureSwizzle)DECODE_FORMAT_COMPONENT_SWIZZLE(format, 0, swizzle.r),
+      (MTLTextureSwizzle)DECODE_FORMAT_COMPONENT_SWIZZLE(format, 1, swizzle.g),
+      (MTLTextureSwizzle)DECODE_FORMAT_COMPONENT_SWIZZLE(format, 2, swizzle.b),
+      (MTLTextureSwizzle)DECODE_FORMAT_COMPONENT_SWIZZLE(format, 3, swizzle.a)
   );
 }
 

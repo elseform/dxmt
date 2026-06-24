@@ -138,7 +138,7 @@ Texture::Texture(const WMTTextureInfo &descriptor, WMT::Device device) :
     device_(device) {
 
   viewDescriptors_.push_back({
-      .format = info_.pixel_format,
+      .format = ORIGINAL_FORMAT(info_.pixel_format),
       .type = info_.type,
       .firstMiplevel = 0,
       .miplevelCount = info_.mipmap_level_count,
@@ -162,7 +162,7 @@ Texture::Texture(
   assert(info_.array_length == 1);
 
   viewDescriptors_.push_back({
-      .format = info_.pixel_format,
+      .format = ORIGINAL_FORMAT(info_.pixel_format),
       .type = info_.type,
       .firstMiplevel = 0,
       .miplevelCount = 1,
