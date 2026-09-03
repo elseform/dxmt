@@ -5402,7 +5402,7 @@ public:
       context_flag(context_flag),
       cmdlist_pool(pPool),
       staging_allocator({pDevice->GetMTLDevice(), WMTResourceOptionCPUCacheModeWriteCombined |
-                                       WMTResourceHazardTrackingModeUntracked | WMTResourceStorageModeManaged, false
+                                       WMTResourceHazardTrackingModeTracked | WMTResourceStorageModeManaged, false
       }),
       cpu_command_allocator({}) {};
 

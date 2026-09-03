@@ -385,7 +385,7 @@ CreateMTLTextureDescriptorInternal(
   case D3D11_USAGE_IMMUTABLE:
     options |= WMTResourceStorageModeManaged | // FIXME: switch to
                                                  // ResourceStorageModePrivate
-               WMTResourceHazardTrackingModeUntracked;
+               WMTResourceHazardTrackingModeTracked;
     break;
   case D3D11_USAGE_DYNAMIC:
     options |=

@@ -164,7 +164,7 @@ public:
       seq_id(seq_id),
       num_results(num_results),
       queries(queries) {
-        visibility_result_heap_info.options = WMTResourceHazardTrackingModeUntracked;
+        visibility_result_heap_info.options = WMTResourceHazardTrackingModeTracked;
         visibility_result_heap_info.memory.set(nullptr);
 #ifdef __i386__
         visibility_result_heap_info.memory.set(wsi::aligned_malloc(num_results * sizeof(uint64_t), DXMT_PAGE_SIZE));

@@ -175,7 +175,7 @@ Texture::Texture(
 
 Rc<TextureAllocation>
 Texture::allocate(Flags<TextureAllocationFlag> flags) {
-  WMTResourceOptions options = WMTResourceHazardTrackingModeUntracked;
+  WMTResourceOptions options = WMTResourceHazardTrackingModeTracked;
   WMTTextureInfo info = info_; // copy
   info.mach_port = 0;
   if (flags.test(TextureAllocationFlag::CpuWriteCombined)) {
