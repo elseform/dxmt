@@ -47,7 +47,8 @@ CommandQueue::CommandQueue(WMT::Device device) :
     copy_temp_allocator({device, WMTResourceHazardTrackingModeUntracked | WMTResourceStorageModePrivate}),
     argbuf_allocator({
         device,
-        WMTResourceHazardTrackingModeUntracked | WMTResourceCPUCacheModeWriteCombined | WMTResourceStorageModeShared
+        WMTResourceHazardTrackingModeUntracked | WMTResourceCPUCacheModeWriteCombined | WMTResourceStorageModeShared,
+        false
     }),
     cpu_command_allocator({}),
     reftracker_storage_allocator({}),
@@ -232,6 +233,11 @@ void CommandQueue::Retain(uint64_t seq, Allocation* allocation) {
     auto [temp_buffer, _] = reftracker_storage_allocator.allocate(seq, cpu_coherent.signaledValue(), block_size, 1);
     tracker.addStorage(temp_buffer.ptr, block_size);
   }
+};
+
+void CommandQueue::RetainNativeResource(uint64_t seq, WMT::Resource resource) {
+  auto &chunk = chunks[seq % kCommandChunkCount];
+  chunk.native_resource_tracker.track(resource);
 };
 
 } // namespace dxmt

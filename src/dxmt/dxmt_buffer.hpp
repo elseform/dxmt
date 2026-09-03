@@ -187,8 +187,8 @@ public:
   WMT::Texture view(BufferViewKey key);
   WMT::Texture view(BufferViewKey key, BufferAllocation *allocation);
 
-  BufferView const &view_(BufferViewKey key); 
-  BufferView const &view_(BufferViewKey key, BufferAllocation *allocation);
+  BufferView &view_(BufferViewKey key);
+  BufferView &view_(BufferViewKey key, BufferAllocation *allocation);
 
   DXMT_RESOURCE_RESIDENCY_STATE &residency(BufferViewKey key);
   DXMT_RESOURCE_RESIDENCY_STATE &residency(BufferViewKey key, BufferAllocation *allocation);

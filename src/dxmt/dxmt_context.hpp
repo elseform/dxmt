@@ -357,7 +357,7 @@ public:
   }
 
   template<PipelineStage stage = PipelineStage::Compute>
-  std::pair<BufferView const &, uint32_t>
+  std::pair<BufferView &, uint32_t>
   access(Rc<Buffer> const &buffer, uint64_t viewId, int flags) {
     auto allocation = buffer->current();
     trackBuffer<stage>(allocation, flags);
@@ -538,9 +538,22 @@ public:
 
   void retainAllocation(Allocation* allocation);
 
+  // Out-of-line (see retainAllocation() above for why): `CommandQueue` is
+  // only forward-declared in this header, so a call into it can't be
+  // resolved from inside an inline template body here.
+  void retainNativeResource(WMT::Resource resource);
+
+  // Lowest-level primitive: encodes the deferred `useResource` command from
+  // the exact native resource identity supplied by the caller, and retains
+  // that same native resource for this chunk's lifetime (see
+  // `NativeResourceRefTracking`). Every other `makeResident()` overload below
+  // must funnel through this one using a resource it already resolved itself
+  // (via `access()`/a bind snapshot) rather than re-resolving `current()` or
+  // `view()`/`view_()` a second time.
   template <PipelineStage stage, PipelineKind kind>
   void
   makeResident(WMT::Resource resource, DXMT_RESOURCE_RESIDENCY requested) {
+    retainNativeResource(resource);
     if constexpr (stage == PipelineStage::Compute) {
       auto &cmd = encodeComputeCommand<wmtcmd_compute_useresource>();
       cmd.type = WMTComputeCommandUseResource;
@@ -554,43 +567,35 @@ public:
       cmd.stages = GetStagesFromResidencyMask(requested);
     }
   }
+  // Buffer bind (no texel view): reuses the `BufferAllocation*` an earlier
+  // `access()` call on the same buffer already resolved.
   template <PipelineStage stage, PipelineKind kind>
   void
-  makeResident(Counter *counter) {
-    auto allocation = getCounterAllocation(counter)->buffer();
-    uint64_t encoder_id = currentEncoder()->id;
-    DXMT_RESOURCE_RESIDENCY requested = GetResidencyMask<kind>(stage, true, true);
-    if (CheckResourceResidency(allocation->residencyState, encoder_id, requested)) {
-      makeResident<stage, kind>(allocation->buffer(), requested);
-    };
-  }
-  template <PipelineStage stage, PipelineKind kind>
-  void
-  makeResident(Buffer *buffer, bool read = true, bool write = false) {
-    auto allocation = buffer->current();
+  makeResident(BufferAllocation *allocation, bool read = true, bool write = false) {
     uint64_t encoder_id = currentEncoder()->id;
     DXMT_RESOURCE_RESIDENCY requested = GetResidencyMask<kind>(stage, read, write);
     if (CheckResourceResidency(allocation->residencyState, encoder_id, requested)) {
       makeResident<stage, kind>(allocation->buffer(), requested);
     };
   }
+  // Texel-buffer view bind: reuses the `BufferView&` an earlier
+  // `access(buffer, viewId, ...)` call already resolved.
   template <PipelineStage stage, PipelineKind kind>
   void
-  makeResident(Buffer *buffer, uint64_t viewId, bool read = true, bool write = false) {
-    auto allocation = buffer->current();
+  makeResident(BufferView &view, bool read = true, bool write = false) {
     uint64_t encoder_id = currentEncoder()->id;
     DXMT_RESOURCE_RESIDENCY requested = GetResidencyMask<kind>(stage, read, write);
-    if (CheckResourceResidency(buffer->residency(viewId, allocation), encoder_id, requested)) {
-      makeResident<stage, kind>(buffer->view(viewId, allocation), requested);
+    if (CheckResourceResidency(view.residency, encoder_id, requested)) {
+      makeResident<stage, kind>(view.texture, requested);
     };
   }
+  // Texture view bind: reuses the `TextureView&` an earlier
+  // `access(texture, viewId, ...)` call already resolved.
   template <PipelineStage stage, PipelineKind kind>
   void
-  makeResident(Texture *texture, uint64_t viewId, bool read = true, bool write = false) {
-    auto allocation = texture->current();
+  makeResident(TextureView &view, bool read = true, bool write = false) {
     uint64_t encoder_id = currentEncoder()->id;
     DXMT_RESOURCE_RESIDENCY requested = GetResidencyMask<kind>(stage, read, write);
-    auto &view = texture->view(viewId, allocation);
     if (CheckResourceResidency(view.residency, encoder_id, requested)) {
       makeResident<stage, kind>(view.texture, requested);
     };
