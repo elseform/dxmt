@@ -69,12 +69,12 @@ Buffer::view(BufferViewKey key, BufferAllocation *allocation) {
   return view_(key, allocation).texture;
 };
 
-BufferView const &
+BufferView &
 Buffer::view_(BufferViewKey key) {
   return view_(key, current_.ptr());
 };
 
-BufferView const &
+BufferView &
 Buffer::view_(BufferViewKey key, BufferAllocation *allocation) {
   if (unlikely(allocation->version_ != version_)) {
     prepareAllocationViews(allocation);
