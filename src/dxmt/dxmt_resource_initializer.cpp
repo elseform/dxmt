@@ -63,7 +63,7 @@ namespace dxmt {
 ResourceInitializer::ResourceInitializer(WMT::Device device) :
     device_(device),
     gpu_command_heap_allocator(StagingBufferBlockAllocator(
-        device, WMTResourceStorageModeManaged | WMTResourceHazardTrackingModeUntracked, false
+        device, WMTResourceStorageModeManaged | WMTResourceHazardTrackingModeTracked, false
     )) {
   upload_queue_ = device.newCommandQueue(kResourceInitializerChunks);
   upload_queue_event_ = device.newSharedEvent();
@@ -483,7 +483,7 @@ ResourceInitializer::allocateZeroBuffer(size_t size) {
     buffer_info.gpu_address = 0;
     buffer_info.length = size;
     buffer_info.memory.set(nullptr);
-    buffer_info.options = WMTResourceStorageModePrivate | WMTResourceHazardTrackingModeUntracked;
+    buffer_info.options = WMTResourceStorageModePrivate | WMTResourceHazardTrackingModeTracked;
     zero_buffer_ = device_.newBuffer(buffer_info);
     zero_buffer_size_ = size;
 

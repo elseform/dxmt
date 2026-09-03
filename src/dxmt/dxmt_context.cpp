@@ -59,7 +59,7 @@ ArgumentEncodingContext::ArgumentEncodingContext(CommandQueue &queue, WMT::Devic
   dummy_cbuffer_info_.length = 65536;
   dummy_cbuffer_info_.memory.set(dummy_cbuffer_host_);
   dummy_cbuffer_info_.options = WMTResourceOptionCPUCacheModeWriteCombined | WMTResourceStorageModeShared |
-                                WMTResourceHazardTrackingModeUntracked;
+                                WMTResourceHazardTrackingModeTracked;
   dummy_cbuffer_ = device.newBuffer(dummy_cbuffer_info_);
   std::memset(dummy_cbuffer_info_.memory.get(), 0, 65536);
   cpu_buffer_chunks_.emplace_back();

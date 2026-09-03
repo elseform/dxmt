@@ -41,13 +41,13 @@ CommandQueue::CommandQueue(WMT::Device device) :
     shared_event_listener(SharedEventListener_create()),
     event_listener_thread([this]() { SharedEventListener_start(this->shared_event_listener); }),
     staging_allocator({
-        device, WMTResourceOptionCPUCacheModeWriteCombined | WMTResourceHazardTrackingModeUntracked |
+        device, WMTResourceOptionCPUCacheModeWriteCombined | WMTResourceHazardTrackingModeTracked |
                     WMTResourceStorageModeManaged, false
     }),
-    copy_temp_allocator({device, WMTResourceHazardTrackingModeUntracked | WMTResourceStorageModePrivate}),
+    copy_temp_allocator({device, WMTResourceHazardTrackingModeTracked | WMTResourceStorageModePrivate}),
     argbuf_allocator({
         device,
-        WMTResourceHazardTrackingModeUntracked | WMTResourceCPUCacheModeWriteCombined | WMTResourceStorageModeShared
+        WMTResourceHazardTrackingModeTracked | WMTResourceCPUCacheModeWriteCombined | WMTResourceStorageModeShared
     }),
     cpu_command_allocator({}),
     reftracker_storage_allocator({}),
