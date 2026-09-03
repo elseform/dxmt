@@ -114,7 +114,17 @@ public:
     structured = pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
     allow_raw_view = pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
     if (!(desc.BindFlags & kD3D11OutputBindFlags)) {
-      dynamic_ = new DynamicBuffer(buffer_.ptr(), flags);
+      // Renames issued through DynamicBuffer (e.g. UpdateSubresource /
+      // Map(WRITE_DISCARD) on a USAGE_DEFAULT buffer) must suballocate from
+      // a shared page, same as USAGE_DYNAMIC buffers already do; otherwise
+      // every rename creates a distinct MTLBuffer, which is quadratic in
+      // update count for small buffers such as constant buffers bound to
+      // the pixel shader stage. Left off the initial `flags` (used only for
+      // this buffer's first allocation) so a buffer that is never renamed
+      // isn't penalized.
+      Flags<BufferAllocationFlag> dynamic_flags = flags;
+      dynamic_flags.set(BufferAllocationFlag::SuballocateFromOnePage);
+      dynamic_ = new DynamicBuffer(buffer_.ptr(), dynamic_flags);
     }
   }
 
