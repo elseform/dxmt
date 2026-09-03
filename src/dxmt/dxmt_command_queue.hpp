@@ -38,6 +38,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <span>
+#include <unordered_set>
+#include <vector>
 
 namespace dxmt {
 
@@ -92,6 +94,36 @@ constexpr uint32_t kCommandChunkCount = 32;
 
 class CommandQueue;
 
+/**
+ * Keeps the exact native Metal resource (buffer/texture) that a deferred
+ * `useResource`/argument-buffer command referenced retained (real Metal
+ * retain, independent of the DXMT-side `Allocation`/`AllocationRefTracking`
+ * bookkeeping) for the lifetime of the command chunk that references it.
+ * Cleared only from `CommandChunk::reset()`, which itself only runs after
+ * the chunk's command buffer has reached `Completed` or `Error`.
+ */
+class NativeResourceRefTracking {
+public:
+  void
+  track(WMT::Resource resource) {
+    obj_handle_t handle = resource;
+    if (handle == NULL_OBJECT_HANDLE)
+      return;
+    if (seen_.insert(handle).second)
+      retained_.emplace_back(resource);
+  }
+
+  void
+  clear() {
+    seen_.clear();
+    retained_.clear();
+  }
+
+private:
+  std::unordered_set<obj_handle_t> seen_;
+  std::vector<WMT::Reference<WMT::Resource>> retained_;
+};
+
 class CommandChunk {
 public:
   CommandChunk(const CommandChunk &) = delete; // delete copy constructor
@@ -135,6 +167,7 @@ private:
   
   CommandList<ArgumentEncodingContext> list_enc;
   AllocationRefTracking ref_tracker;
+  NativeResourceRefTracking native_resource_tracker;
 
   friend class CommandQueue;
 
@@ -147,6 +180,7 @@ public:
     readback = {};
     list_enc.reset();
     ref_tracker.clear();
+    native_resource_tracker.clear();
     attached_cmdbuf = nullptr;
   }
 };
@@ -313,6 +347,8 @@ public:
   }
 
   void Retain(uint64_t seq, Allocation *allocation);
+
+  void RetainNativeResource(uint64_t seq, WMT::Resource resource);
 };
 
 } // namespace dxmt

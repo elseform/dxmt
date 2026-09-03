@@ -94,9 +94,12 @@ public:
     WMT::Reference<WMT::Buffer> buffer;
     uint64_t gpu_address;
     void *mapped_address;
+    // true only for the externally malloc'd + newBufferWithBytesNoCopy path;
+    // the Metal-owned newBufferWithLength/contents path must not be freed here.
+    bool owns_mapped_address = false;
 
     ~Block() {
-      if (mapped_address) {
+      if (owns_mapped_address && mapped_address) {
         free(mapped_address);
         mapped_address = nullptr;
       }
@@ -109,20 +112,33 @@ public:
       buffer = std::move(move.buffer);
       gpu_address = move.gpu_address;
       mapped_address = move.mapped_address;
+      owns_mapped_address = move.owns_mapped_address;
       move.mapped_address = nullptr;
+      move.owns_mapped_address = false;
     };
   };
 
   Block
   allocate(size_t block_size) {
     Block block{};
-    block.mapped_address = placed_buffer_ ? malloc(block_size) : nullptr;
     WMTBufferInfo info;
     info.options = buffer_info_;
-    info.memory.set(block.mapped_address);
     info.length = block_size;
+    if (placed_buffer_) {
+      block.mapped_address = malloc(block_size);
+      block.owns_mapped_address = true;
+      info.memory.set(block.mapped_address);
+    } else {
+      info.memory.set(nullptr);
+    }
     block.buffer = device_.newBuffer(info);
     block.gpu_address = info.gpu_address;
+    if (!placed_buffer_) {
+      // Metal-owned storage: the device wrote the mapped `contents` pointer
+      // back into `info.memory` (WMTResourceStorageModeShared/Managed) or
+      // left it null (WMTResourceStorageModePrivate). Never malloc/free here.
+      block.mapped_address = info.memory.get();
+    }
     return block;
   };
 

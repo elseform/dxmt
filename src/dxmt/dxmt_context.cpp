@@ -107,7 +107,7 @@ ArgumentEncodingContext::encodeVertexBuffers(uint32_t slot_mask, uint64_t offset
     entries[index].stride = state.stride;
     entries[index++].length = valid_length;
     // FIXME: did we intended to use the whole buffer?
-    makeResident<PipelineStage::Vertex, kind>(buffer.ptr());
+    makeResident<PipelineStage::Vertex, kind>(buffer_alloc);
   };
   {
     auto &cmd = encodeRenderCommand<wmtcmd_render_setbufferoffset>();
@@ -141,7 +141,7 @@ ArgumentEncodingContext::encodeStreamOutputBuffers<PipelineKind::Ordinary>(uint6
     auto [buffer_alloc, buffer_offset] = access<PipelineStage::Vertex>(buffer, state.offset, 0, ResourceAccess::Write);
     entries[slot].buffer_handle = buffer_alloc->gpuAddress() + buffer_offset + state.offset;
     entries[slot].counter_handle = 0; // TODO(stream-output): counter & buffer_filled_size
-    makeResident<PipelineStage::Vertex, PipelineKind::Ordinary>(buffer.ptr(), false, true);
+    makeResident<PipelineStage::Vertex, PipelineKind::Ordinary>(buffer_alloc, false, true);
   };
   {
     auto &cmd = encodeRenderCommand<wmtcmd_render_setbufferoffset>();
@@ -225,7 +225,7 @@ ArgumentEncodingContext::encodeConstantBuffers(const MTL_SHADER_REFLECTION *refl
       auto valid_length = argbuf->length() > cbuf.offset ? argbuf->length() - cbuf.offset : 0;
       auto [argbuf_alloc, argbuf_offset] = access<stage>(argbuf, cbuf.offset, valid_length, ResourceAccess::Read);
       encoded_buffer[arg.StructurePtrOffset] = argbuf_alloc->gpuAddress() + argbuf_offset + cbuf.offset;
-      makeResident<stage, kind>(argbuf.ptr());
+      makeResident<stage, kind>(argbuf_alloc);
       break;
     }
     default:
@@ -339,7 +339,7 @@ ArgumentEncodingContext::encodeShaderResources(
           auto [srv_alloc, offset] = access<stage>(srv.buffer, srv.slice.byteOffset, srv.slice.byteLength, ResourceAccess::Read);
           encoded_buffer[arg.StructurePtrOffset] = srv_alloc->gpuAddress() + offset + srv.slice.byteOffset;
           encoded_buffer[arg.StructurePtrOffset + 1] = srv.slice.byteLength;
-          makeResident<stage, kind>(srv.buffer.ptr());
+          makeResident<stage, kind>(srv_alloc);
         } else {
           encoded_buffer[arg.StructurePtrOffset] = 0;
           encoded_buffer[arg.StructurePtrOffset + 1] = 0;
@@ -351,14 +351,14 @@ ArgumentEncodingContext::encodeShaderResources(
           encoded_buffer[arg.StructurePtrOffset] = view.gpu_resource_id;
           encoded_buffer[arg.StructurePtrOffset + 1] =
               ((uint64_t)srv.slice.elementCount << 32) | (uint64_t)(srv.slice.firstElement + offset);
-          makeResident<stage, kind>(srv.buffer.ptr(), srv.viewId);
+          makeResident<stage, kind>(view);
         } else if (srv.texture.ptr()) {
           assert(arg.Flags & MTL_SM50_SHADER_ARGUMENT_TEXTURE_MINLOD_CLAMP);
           auto viewIdChecked = srv.texture->checkViewUseArray(srv.viewId, arg.Flags & MTL_SM50_SHADER_ARGUMENT_TEXTURE_ARRAY);
-          encoded_buffer[arg.StructurePtrOffset] =
-              access<stage>(srv.texture, viewIdChecked, ResourceAccess::Read).gpuResourceID;
+          auto &view = access<stage>(srv.texture, viewIdChecked, ResourceAccess::Read);
+          encoded_buffer[arg.StructurePtrOffset] = view.gpuResourceID;
           encoded_buffer[arg.StructurePtrOffset + 1] = TextureMetadata(srv.texture->arrayLength(viewIdChecked), 0);
-          makeResident<stage, kind>(srv.texture.ptr(), viewIdChecked);
+          makeResident<stage, kind>(view);
         } else {
           encoded_buffer[arg.StructurePtrOffset] = 0;
           encoded_buffer[arg.StructurePtrOffset + 1] = 0;
@@ -379,7 +379,7 @@ ArgumentEncodingContext::encodeShaderResources(
           auto [uav_alloc, offset] = access<stage>(uav.buffer, uav.slice.byteOffset, uav.slice.byteLength, access_flags);
           encoded_buffer[arg.StructurePtrOffset] = uav_alloc->gpuAddress() + offset + uav.slice.byteOffset;
           encoded_buffer[arg.StructurePtrOffset + 1] = uav.slice.byteLength;
-          makeResident<stage, kind>(uav.buffer.ptr(), read, write);
+          makeResident<stage, kind>(uav_alloc, read, write);
         } else {
           encoded_buffer[arg.StructurePtrOffset] = 0;
           encoded_buffer[arg.StructurePtrOffset + 1] = 0;
@@ -391,13 +391,14 @@ ArgumentEncodingContext::encodeShaderResources(
           encoded_buffer[arg.StructurePtrOffset] = view.gpu_resource_id;
           encoded_buffer[arg.StructurePtrOffset + 1] =
               ((uint64_t)uav.slice.elementCount << 32) | (uint64_t)(uav.slice.firstElement + offset);
-          makeResident<stage, kind>(uav.buffer.ptr(), uav.viewId, read, write);
+          makeResident<stage, kind>(view, read, write);
         } else if (uav.texture.ptr()) {
           assert(arg.Flags & MTL_SM50_SHADER_ARGUMENT_TEXTURE_MINLOD_CLAMP);
           auto viewIdChecked = uav.texture->checkViewUseArray(uav.viewId, arg.Flags & MTL_SM50_SHADER_ARGUMENT_TEXTURE_ARRAY);
-          encoded_buffer[arg.StructurePtrOffset] = access<stage>(uav.texture, viewIdChecked, access_flags).gpuResourceID;
+          auto &view = access<stage>(uav.texture, viewIdChecked, access_flags);
+          encoded_buffer[arg.StructurePtrOffset] = view.gpuResourceID;
           encoded_buffer[arg.StructurePtrOffset + 1] = TextureMetadata(uav.texture->arrayLength(viewIdChecked), 0);
-          makeResident<stage, kind>(uav.texture.ptr(), viewIdChecked, read, write);
+          makeResident<stage, kind>(view, read, write);
         } else {
           encoded_buffer[arg.StructurePtrOffset] = 0;
           encoded_buffer[arg.StructurePtrOffset + 1] = 0;
@@ -407,7 +408,7 @@ ArgumentEncodingContext::encodeShaderResources(
         if (uav.counter) {
           auto [counter_alloc, offset] = access<stage>(uav.counter);
           encoded_buffer[arg.StructurePtrOffset + 2] = counter_alloc->gpuAddress() + offset;
-          makeResident<stage, kind>(uav.counter.ptr());
+          makeResident<stage, kind>(counter_alloc, true, true);
         } else {
           /*
            * potentially cause gpu pagefault, even providing a dummy buffer doesn't improve since the returned
@@ -462,6 +463,11 @@ ArgumentEncodingContext::retainAllocation(Allocation* allocation) {
   if (allocation->checkRetained(seq_id_))
     return;
   queue_.Retain(seq_id_, allocation);
+}
+
+void
+ArgumentEncodingContext::retainNativeResource(WMT::Resource resource) {
+  queue_.RetainNativeResource(seq_id_, resource);
 }
 
 void
