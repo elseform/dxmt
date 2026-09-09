@@ -210,6 +210,13 @@ struct RenderEncoderData : EncoderData {
   bool use_emulated_so = 0;
   TileBarrierPSOKey tile_barrier_pso_key = {};
   WMT::RenderPipelineState last_pso = {};
+  /**
+  Set when a pipeline failed to compile and no PSO was encoded. Draws must be
+  skipped until a valid pipeline is bound again: otherwise they execute under
+  whichever pipeline was bound last, with bindings written for the failed
+  shader's layout, which can dereference non-resident memory.
+  */
+  bool pso_invalid = false;
 };
 
 struct ComputeEncoderData : EncoderData {
@@ -712,6 +719,16 @@ public:
   currentEncoderId() {
     assert(encoder_current);
     return encoder_current->id;
+  }
+
+  /**
+  True when the current render encoder has no valid pipeline, because the last
+  pipeline bound to it failed to compile. Draw encoding must be skipped.
+  */
+  constexpr bool
+  renderPipelineInvalid() {
+    assert(encoder_current && encoder_current->type == EncoderType::Render);
+    return static_cast<RenderEncoderData *>(encoder_current)->pso_invalid;
   }
 
   constexpr RenderEncoderData *

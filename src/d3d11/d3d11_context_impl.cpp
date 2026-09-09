@@ -1289,6 +1289,10 @@ public:
     EmitOP([Primitive, StartVertexLocation, VertexCount](ArgumentEncodingContext& enc) {
       enc.bumpVisibilityResultOffset();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_draw>();
       cmd.type = WMTRenderCommandDraw;
       cmd.primitive_type = Primitive;
@@ -1328,6 +1332,10 @@ public:
       enc.bumpVisibilityResultOffset();
       auto [index_buffer, index_sub_offset] = enc.currentIndexBuffer();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_draw_indexed>();
       cmd.type = WMTRenderCommandDrawIndexed;
       cmd.primitive_type = Primitive;
@@ -1368,6 +1376,10 @@ public:
           StartInstanceLocation](ArgumentEncodingContext &enc) {
       enc.bumpVisibilityResultOffset();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_draw>();
       cmd.type = WMTRenderCommandDraw;
       cmd.primitive_type = Primitive;
@@ -1416,6 +1428,10 @@ public:
       enc.bumpVisibilityResultOffset();
       auto [index_buffer, index_sub_offset] = enc.currentIndexBuffer();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_draw_indexed>();
       cmd.type = WMTRenderCommandDrawIndexed;
       cmd.primitive_type = Primitive;
@@ -1458,6 +1474,10 @@ public:
 
       enc.bumpVisibilityResultOffset();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_tessellation_mesh_draw>();
       cmd.type = WMTRenderCommandDXMTTessellationMeshDraw;
       cmd.draw_arguments_offset = enc.getFinalArgumentBufferOffset(draw_arguments_offset);
@@ -1500,6 +1520,10 @@ public:
       auto [index_buffer, index_sub_offset] = enc.currentIndexBuffer();
       enc.bumpVisibilityResultOffset();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_tessellation_mesh_draw_indexed>();
       cmd.type = WMTRenderCommandDXMTTessellationMeshDrawIndexed;
       cmd.draw_arguments_offset = enc.getFinalArgumentBufferOffset(draw_arguments_offset);
@@ -1536,6 +1560,10 @@ public:
 
       enc.bumpVisibilityResultOffset();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_geometry_draw>();
       cmd.type = WMTRenderCommandDXMTGeometryDraw;
       cmd.draw_arguments_offset = enc.getFinalArgumentBufferOffset(draw_arguments_offset);
@@ -1572,6 +1600,10 @@ public:
 
       enc.bumpVisibilityResultOffset();
       enc.resolveRenderPassBarrier();
+      // Skip the draw when the pipeline failed to compile: the encoder would
+      // otherwise execute it under the previously bound PSO.
+      if (enc.renderPipelineInvalid())
+        return;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_geometry_draw_indexed>();
       cmd.type = WMTRenderCommandDXMTGeometryDrawIndexed;
       cmd.draw_arguments_offset = enc.getFinalArgumentBufferOffset(draw_arguments_offset);
@@ -1613,6 +1645,10 @@ public:
         enc.bumpVisibilityResultOffset();
         auto [index_buffer, index_sub_offset] = enc.currentIndexBuffer();
         enc.resolveRenderPassBarrier();
+        // Skip the draw when the pipeline failed to compile: the encoder would
+        // otherwise execute it under the previously bound PSO.
+        if (enc.renderPipelineInvalid())
+          return;
         auto &cmd = enc.encodeRenderCommand<wmtcmd_render_draw_indexed_indirect>();
         cmd.type = WMTRenderCommandDrawIndexedIndirect;
         cmd.primitive_type = Primitive;
@@ -1650,6 +1686,10 @@ public:
         );
         enc.bumpVisibilityResultOffset();
         enc.resolveRenderPassBarrier();
+        // Skip the draw when the pipeline failed to compile: the encoder would
+        // otherwise execute it under the previously bound PSO.
+        if (enc.renderPipelineInvalid())
+          return;
         auto &cmd = enc.encodeRenderCommand<wmtcmd_render_draw_indirect>();
         cmd.type = WMTRenderCommandDrawIndirect;
         cmd.primitive_type = Primitive;
@@ -1679,6 +1719,10 @@ public:
           dispatch_arg.gpu_buffer, dispatch_arg.gpu_address, dispatch_arg.offset, max_object_threadgroups
         );
         enc.resolveRenderPassBarrier();
+        // Skip the draw when the pipeline failed to compile: the encoder would
+        // otherwise execute it under the previously bound PSO.
+        if (enc.renderPipelineInvalid())
+          return;
         auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_geometry_draw_indirect>();
         cmd.type = WMTRenderCommandDXMTGeometryDrawIndirect;
         cmd.dispatch_args_buffer = dispatch_arg.gpu_buffer;
@@ -1714,6 +1758,10 @@ public:
           dispatch_arg.gpu_buffer, dispatch_arg.gpu_address, dispatch_arg.offset, max_object_threadgroups
         );
         enc.resolveRenderPassBarrier();
+        // Skip the draw when the pipeline failed to compile: the encoder would
+        // otherwise execute it under the previously bound PSO.
+        if (enc.renderPipelineInvalid())
+          return;
         auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_geometry_draw_indexed_indirect>();
         cmd.type = WMTRenderCommandDXMTGeometryDrawIndexedIndirect;
         cmd.dispatch_args_buffer = dispatch_arg.gpu_buffer;
@@ -1750,6 +1798,10 @@ public:
             dispatch_arg.gpu_buffer, dispatch_arg.gpu_address,
             dispatch_arg.offset, max_object_threadgroups);
         enc.resolveRenderPassBarrier();
+        // Skip the draw when the pipeline failed to compile: the encoder would
+        // otherwise execute it under the previously bound PSO.
+        if (enc.renderPipelineInvalid())
+          return;
         auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_tessellation_mesh_draw_indirect>();
         cmd.type = WMTRenderCommandDXMTTessellationMeshDrawIndirect;
         cmd.dispatch_args_buffer = dispatch_arg.gpu_buffer;
@@ -1788,6 +1840,10 @@ public:
             dispatch_arg.gpu_buffer, dispatch_arg.gpu_address,
             dispatch_arg.offset, max_object_threadgroups);
         enc.resolveRenderPassBarrier();
+        // Skip the draw when the pipeline failed to compile: the encoder would
+        // otherwise execute it under the previously bound PSO.
+        if (enc.renderPipelineInvalid())
+          return;
         auto &cmd = enc.encodeRenderCommand<wmtcmd_render_dxmt_tessellation_mesh_draw_indexed_indirect>();
         cmd.type = WMTRenderCommandDXMTTessellationMeshDrawIndexedIndirect;
         cmd.dispatch_args_buffer = dispatch_arg.gpu_buffer;
@@ -4713,8 +4769,11 @@ public:
       pso->GetPipeline(&GraphicsPipeline); // may block
       enc.tess_num_output_control_point_element = GraphicsPipeline.NumControlPointOutputElement;
       enc.tess_threads_per_patch = GraphicsPipeline.ThreadsPerPatch;
-      if (!GraphicsPipeline.PipelineState)
+      if (!GraphicsPipeline.PipelineState) {
+        render_encoder->pso_invalid = true;
         return;
+      }
+      render_encoder->pso_invalid = false;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_setpso>();
       cmd.type = WMTRenderCommandSetPSO;
       cmd.pso = GraphicsPipeline.PipelineState;
@@ -4759,8 +4818,11 @@ public:
       render_encoder->use_geometry = 1;
       MTL_COMPILED_GRAPHICS_PIPELINE GraphicsPipeline{};
       pso->GetPipeline(&GraphicsPipeline); // may block
-      if (!GraphicsPipeline.PipelineState)
+      if (!GraphicsPipeline.PipelineState) {
+        render_encoder->pso_invalid = true;
         return;
+      }
+      render_encoder->pso_invalid = false;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_setpso>();
       cmd.type = WMTRenderCommandSetPSO;
       cmd.pso = GraphicsPipeline.PipelineState;
@@ -4815,8 +4877,11 @@ public:
     EmitST([pso = std::move(pipeline)](ArgumentEncodingContext& enc) {
       MTL_COMPILED_GRAPHICS_PIPELINE GraphicsPipeline{};
       pso->GetPipeline(&GraphicsPipeline); // may block
-      if (!GraphicsPipeline.PipelineState)
+      if (!GraphicsPipeline.PipelineState) {
+        enc.currentRenderEncoder()->pso_invalid = true;
         return;
+      }
+      enc.currentRenderEncoder()->pso_invalid = false;
       auto &cmd = enc.encodeRenderCommand<wmtcmd_render_setpso>();
       cmd.type = WMTRenderCommandSetPSO;
       cmd.pso = GraphicsPipeline.PipelineState;
