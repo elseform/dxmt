@@ -5,6 +5,7 @@
 #include "d3d11_shader.hpp"
 #include "log/log.hpp"
 #include <atomic>
+#include <string>
 
 namespace dxmt {
 
@@ -40,10 +41,13 @@ public:
           depth_stencil_format == WMTPixelFormatInvalid,
           unorm_output_reg_mask});
       ps_valid_render_targets = pDesc->PixelShader->reflection().PSValidRenderTargets;
+      ps_sha1_ = pDesc->PixelShader->sha1().string();
     } else {
       PixelShader = nullptr;
       ps_valid_render_targets = 0;
+      ps_sha1_ = "none";
     }
+    vs_sha1_ = pDesc->VertexShader->sha1().string();
   }
 
   void GetPipeline(MTL_COMPILED_GRAPHICS_PIPELINE *pPipeline) final {
@@ -99,7 +103,8 @@ public:
     state_ = device_->GetMTLDevice().newRenderPipelineState(info, err);
 
     if (state_ == nullptr) {
-      ERR("Failed to create PSO: ", err.description().getUTF8String());
+      ERR("Failed to create PSO (vs ", vs_sha1_, ", ps ", ps_sha1_, "): ",
+          err.description().getUTF8String());
       return this;
     }
 
@@ -123,6 +128,10 @@ private:
   WMTPrimitiveTopologyClass topology_class;
   MTLD3D11Device *device_;
   std::atomic_bool ready_;
+  // Source-shader digests, kept so a failed PSO can be traced back to the
+  // shaders it was built from.
+  std::string vs_sha1_;
+  std::string ps_sha1_;
   CompiledShader *VertexShader;
   CompiledShader *PixelShader;
   IMTLD3D11BlendState *pBlendState;
