@@ -5471,25 +5471,7 @@ public:
                   motion_vector_format, mv_downscaled = std::move(mv_downscaled),
                   depth_origin = WMTOrigin{pDesc->DepthSubrectBaseX, pDesc->DepthSubrectBaseY, 0}
                 ](ArgumentEncodingContext &enc) mutable {
-      Rc<Texture> depth_input = depth;
-      if (depth_cropped) {
-        enc.startBlitPass();
-        auto src = enc.access(depth, depth->fullView, ResourceAccess::Read).texture;
-        auto dst = enc.access(depth_cropped, depth_cropped->fullView, ResourceAccess::Write).texture;
-        auto &copy = enc.encodeBlitCommand<wmtcmd_blit_copy_from_texture_to_texture>();
-        copy.type = WMTBlitCommandCopyFromTextureToTexture;
-        copy.src = src;
-        copy.src_slice = 0;
-        copy.src_level = 0;
-        copy.src_origin = depth_origin;
-        copy.src_size = {depth_cropped->width(), depth_cropped->height(), 1};
-        copy.dst = dst;
-        copy.dst_slice = 0;
-        copy.dst_level = 0;
-        copy.dst_origin = {0, 0, 0};
-        enc.endPass();
-        depth_input = depth_cropped;
-      }
+      Rc<Texture> depth_input = depth_cropped ? depth_cropped : depth;
 
       auto mv_view = motion_vector->createView(
           {.format = motion_vector_format,
@@ -5515,9 +5497,15 @@ public:
         WMTFXTemporalScalerProps new_props = props;
         new_props.motion_vector_scale_x = 1.0;
         new_props.motion_vector_scale_y = 1.0;
-        enc.upscaleTemporal(input, output, depth_input, mv_downscaled, 0, exposure, scaler, new_props);
+        enc.upscaleTemporal(
+            input, output, depth_input, mv_downscaled, 0, exposure, scaler, new_props,
+            depth_cropped ? &depth : nullptr, depth_origin
+        );
       } else {
-        enc.upscaleTemporal(input, output, depth_input, motion_vector, mv_view, exposure, scaler, props);
+        enc.upscaleTemporal(
+            input, output, depth_input, motion_vector, mv_view, exposure, scaler, props,
+            depth_cropped ? &depth : nullptr, depth_origin
+        );
       }
     });
   }
