@@ -571,7 +571,8 @@ ArgumentEncodingContext::upscale(Rc<Texture> &texture, Rc<Texture> &upscaled, Rc
 void
 ArgumentEncodingContext::upscaleTemporal(
     Rc<Texture> &input, Rc<Texture> &output, Rc<Texture> &depth, Rc<Texture> &motion_vector, TextureViewKey mvViewId,
-    Rc<Texture> &exposure, Rc<TemporalScaler> &scaler, const WMTFXTemporalScalerProps &props
+    Rc<Texture> &exposure, Rc<TemporalScaler> &scaler, const WMTFXTemporalScalerProps &props,
+    Rc<Texture> *depth_crop_src, WMTOrigin depth_crop_origin
 ) {
   assert(!encoder_current);
   auto encoder_info = allocate<TemporalUpscaleData>();
@@ -584,7 +585,29 @@ ArgumentEncodingContext::upscaleTemporal(
 
   encoder_current = encoder_info;
   encoder_info->input = access(input, input->fullView, ResourceAccess::Read).texture;
-  encoder_info->depth = access(depth, depth->fullView, ResourceAccess::Read).texture;
+  if (depth_crop_src) {
+    // Depth is display-res while color/motion are render-res: crop the render-res
+    // region out of it before MetalFX reads it. Recorded here as a single blit
+    // command replayed into the begin-scaler encoder below (dxmt_context.cpp's
+    // TemporalUpscale case), instead of a standalone blit pass, so this doesn't
+    // add an extra encoder switch on top of what MetalFX already needs per frame.
+    encoder_info->depth_crop_src = access(*depth_crop_src, (*depth_crop_src)->fullView, ResourceAccess::Read).texture;
+    encoder_info->depth = access(depth, depth->fullView, ResourceAccess::Write).texture;
+    auto &cmd = encoder_info->depth_crop_cmd;
+    cmd.type = WMTBlitCommandCopyFromTextureToTexture;
+    cmd.next.set(nullptr);
+    cmd.src = encoder_info->depth_crop_src;
+    cmd.src_slice = 0;
+    cmd.src_level = 0;
+    cmd.src_origin = depth_crop_origin;
+    cmd.src_size = {depth->width(), depth->height(), 1};
+    cmd.dst = encoder_info->depth;
+    cmd.dst_slice = 0;
+    cmd.dst_level = 0;
+    cmd.dst_origin = {0, 0, 0};
+  } else {
+    encoder_info->depth = access(depth, depth->fullView, ResourceAccess::Read).texture;
+  }
   encoder_info->motion_vector = access(motion_vector, mvViewId, ResourceAccess::Read).texture;
   encoder_info->output = access(output, output->fullView, ResourceAccess::Write).texture;
   if (exposure) {
@@ -1204,6 +1227,9 @@ ArgumentEncodingContext::flushCommands(WMT::CommandBuffer cmdbuf, uint64_t seqId
       auto begin_scaler = cmdbuf.blitCommandEncoder();
       begin_scaler.setLabel(WMT::String::string("BeginScaler", WMTUTF8StringEncoding));
       data->fence_wait.forEach([&](auto id) { begin_scaler.waitForFence(fence_pool_[id]); });
+      if (data->depth_crop_src) {
+        begin_scaler.encodeCommands((const wmtcmd_blit_nop *)&data->depth_crop_cmd);
+      }
       begin_scaler.updateFence(data->scaler->fence());
       begin_scaler.endEncoding();
 
