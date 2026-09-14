@@ -290,6 +290,12 @@ struct TemporalUpscaleData : EncoderData {
   WMT::Reference<WMT::Texture> exposure;
   Rc<TemporalScaler> scaler;
   WMTFXTemporalScalerProps props;
+  // When set, depth was cropped: `depth` is the crop destination and this
+  // command copies the subrect out of `depth_crop_src` into it. Encoded into
+  // the same begin-scaler blit encoder below instead of a dedicated blit
+  // pass, so DLSS doesn't pay for an extra encoder switch every frame.
+  WMT::Reference<WMT::Texture> depth_crop_src;
+  wmtcmd_blit_copy_from_texture_to_texture depth_crop_cmd;
 };
 
 template <PipelineKind kind>
@@ -683,7 +689,8 @@ public:
 
   void upscaleTemporal(
       Rc<Texture> &input, Rc<Texture> &output, Rc<Texture> &depth, Rc<Texture> &motion_vector, TextureViewKey mvViewId,
-      Rc<Texture> &exposure, Rc<TemporalScaler> &scaler, const WMTFXTemporalScalerProps &props
+      Rc<Texture> &exposure, Rc<TemporalScaler> &scaler, const WMTFXTemporalScalerProps &props,
+      Rc<Texture> *depth_crop_src = nullptr, WMTOrigin depth_crop_origin = {}
   );
 
   void signalEvent(uint64_t value);
