@@ -22,6 +22,7 @@ NVNGX_API NVNGX_RESULT
 NVSDK_NGX_D3D11_Init(
     unsigned long long id, const wchar_t *path, ID3D11Device *device, const void *feature_info, unsigned int sdk_version
 ) {
+  Logger::info(str::format("NVSDK_NGX_D3D11_Init: sdk_version=", sdk_version));
   return NVNGX_RESULT_OK;
 }
 
@@ -46,32 +47,52 @@ NVSDK_NGX_D3D11_CreateFeature(
     ID3D11DeviceContext *context, unsigned int feature, NVNGXParameter *params, unsigned int **out_handle
 ) {
   auto parameters = static_cast<ParametersImpl *>(params);
+  Logger::info(str::format("NVSDK_NGX_D3D11_CreateFeature: called, feature=", feature));
   Com<IMTLD3D11ContextExt1> pCtxExt = nullptr;
-  if (FAILED(context->QueryInterface(IID_PPV_ARGS(&pCtxExt))))
+  if (FAILED(context->QueryInterface(IID_PPV_ARGS(&pCtxExt)))) {
+    WARN("NVSDK_NGX_D3D11_CreateFeature: QueryInterface(IMTLD3D11ContextExt1) failed");
     return NVNGX_RESULT_INVALID_PARAMETER;
+  }
   if (feature == NVNGX_FEATURE_SUPERSAMPLING) {
     BOOL feature_supported = false;
-    if (FAILED(pCtxExt->CheckFeatureSupport(MTL_FEATURE_METALFX_TEMPORAL_SCALER, &feature_supported, sizeof(feature_supported))))
+    if (FAILED(pCtxExt->CheckFeatureSupport(MTL_FEATURE_METALFX_TEMPORAL_SCALER, &feature_supported, sizeof(feature_supported)))) {
+      WARN("NVSDK_NGX_D3D11_CreateFeature: CheckFeatureSupport(METALFX_TEMPORAL_SCALER) call failed");
       return NVNGX_RESULT_FEATURE_NOT_SUPPORTED;
-    if (!feature_supported)
+    }
+    if (!feature_supported) {
+      WARN("NVSDK_NGX_D3D11_CreateFeature: METALFX_TEMPORAL_SCALER reported unsupported");
       return NVNGX_RESULT_FEATURE_NOT_SUPPORTED;
+    }
 
     auto dlss = std::make_unique<DLSSFeature>();
     dlss->feature = NVNGX_FEATURE_SUPERSAMPLING;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Width, &dlss->width)))
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Width, &dlss->width))) {
+      WARN("NVSDK_NGX_D3D11_CreateFeature: missing Width parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Height, &dlss->height)))
+    }
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Height, &dlss->height))) {
+      WARN("NVSDK_NGX_D3D11_CreateFeature: missing Height parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_OutWidth, &dlss->target_width)))
+    }
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_OutWidth, &dlss->target_width))) {
+      WARN("NVSDK_NGX_D3D11_CreateFeature: missing OutWidth parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_OutHeight, &dlss->target_height)))
+    }
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_OutHeight, &dlss->target_height))) {
+      WARN("NVSDK_NGX_D3D11_CreateFeature: missing OutHeight parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
+    }
     if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_PerfQualityValue, &dlss->quality)))
       dlss->quality = 0;
     if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_DLSS_Feature_Create_Flags, &dlss->flag)))
       dlss->flag = 0;
     if (NVNGX_FAILED(parameters->Get("DLSS.Enable.Output.Subrects", &dlss->enable_output_subrects)))
       dlss->enable_output_subrects = 0;
+
+    Logger::info(str::format(
+        "NVSDK_NGX_D3D11_CreateFeature: SUPERSAMPLING created, render ", dlss->width, "x", dlss->height,
+        " -> ", dlss->target_width, "x", dlss->target_height, ", quality=", dlss->quality,
+        ", flags=", dlss->flag));
 
     *out_handle = &dlss.release()->handle;
     return NVNGX_RESULT_OK;
@@ -86,35 +107,60 @@ NVSDK_NGX_D3D11_EvaluateFeature(
     ID3D11DeviceContext *context, const unsigned int *handle, NVNGXParameter *params, void *callback
 ) {
   auto parameters = static_cast<ParametersImpl *>(params);
+  Logger::info(str::format(
+      "NVSDK_NGX_D3D11_EvaluateFeature: called, feature=", static_cast<CommonFeature *>((void *)handle)->feature));
   switch (static_cast<CommonFeature *>((void *)handle)->feature) {
   case NVNGX_FEATURE_SUPERSAMPLING: {
     auto dlss = static_cast<DLSSFeature *>((void *)handle);
 
     IMTLD3D11ContextExt *pCtxExt = nullptr;
-    if (FAILED(context->QueryInterface(IID_PPV_ARGS(&pCtxExt))))
+    if (FAILED(context->QueryInterface(IID_PPV_ARGS(&pCtxExt)))) {
+      WARN("NVSDK_NGX_D3D11_EvaluateFeature: QueryInterface(IMTLD3D11ContextExt) failed");
       return NVNGX_RESULT_INVALID_PARAMETER;
+    }
 
     ID3D11Texture2D *input, *output, *depth, *mv, *exposure = nullptr;
 
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Color, (ID3D11Resource **)&input)))
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Color, (ID3D11Resource **)&input))) {
+      WARN("NVSDK_NGX_D3D11_EvaluateFeature: missing Color parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Output, (ID3D11Resource **)&output)))
+    }
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Output, (ID3D11Resource **)&output))) {
+      WARN("NVSDK_NGX_D3D11_EvaluateFeature: missing Output parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Depth, (ID3D11Resource **)&depth)))
+    }
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_Depth, (ID3D11Resource **)&depth))) {
+      WARN("NVSDK_NGX_D3D11_EvaluateFeature: missing Depth parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_MotionVectors, (ID3D11Resource **)&mv)))
+    }
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_MotionVectors, (ID3D11Resource **)&mv))) {
+      WARN("NVSDK_NGX_D3D11_EvaluateFeature: missing MotionVectors parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
+    }
     parameters->Get(NVNGX_Parameter_ExposureTexture, (ID3D11Resource **)&exposure);
 
     uint32_t width = 0, height = 0;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_DLSS_Render_Subrect_Dimensions_Width, &width)))
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_DLSS_Render_Subrect_Dimensions_Width, &width))) {
+      WARN("NVSDK_NGX_D3D11_EvaluateFeature: missing Render.Subrect.Dimensions.Width parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_DLSS_Render_Subrect_Dimensions_Height, &height)))
+    }
+    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_DLSS_Render_Subrect_Dimensions_Height, &height))) {
+      WARN("NVSDK_NGX_D3D11_EvaluateFeature: missing Render.Subrect.Dimensions.Height parameter");
       return NVNGX_RESULT_INVALID_PARAMETER;
+    }
 
     MTL_TEMPORAL_UPSCALE_D3D11_DESC desc = {};
     desc.InputContentWidth = width;
     desc.InputContentHeight = height;
+
+    parameters->Get(NVNGX_Parameter_DLSS_Input_Color_Subrect_Base_X, &desc.ColorSubrectBaseX);
+    parameters->Get(NVNGX_Parameter_DLSS_Input_Color_Subrect_Base_Y, &desc.ColorSubrectBaseY);
+    parameters->Get(NVNGX_Parameter_DLSS_Input_Depth_Subrect_Base_X, &desc.DepthSubrectBaseX);
+    parameters->Get(NVNGX_Parameter_DLSS_Input_Depth_Subrect_Base_Y, &desc.DepthSubrectBaseY);
+    parameters->Get(NVNGX_Parameter_DLSS_Input_MV_Subrect_Base_X, &desc.MotionVectorSubrectBaseX);
+    parameters->Get(NVNGX_Parameter_DLSS_Input_MV_Subrect_Base_Y, &desc.MotionVectorSubrectBaseY);
+    parameters->Get(NVNGX_Parameter_DLSS_Output_Subrect_Base_X, &desc.OutputSubrectBaseX);
+    parameters->Get(NVNGX_Parameter_DLSS_Output_Subrect_Base_Y, &desc.OutputSubrectBaseY);
 
     desc.Color = input;
     desc.Output = output;
@@ -138,8 +184,35 @@ NVSDK_NGX_D3D11_EvaluateFeature(
       desc.MotionVectorScaleX = 1.0;
     if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_MV_Scale_Y, &desc.MotionVectorScaleY)))
       desc.MotionVectorScaleY = 1.0;
-    if (NVNGX_FAILED(parameters->Get(NVNGX_Parameter_DLSS_Pre_Exposure, &desc.PreExposure)))
-      desc.PreExposure = 0;
+    const NVNGX_RESULT pre_exposure_result =
+        parameters->Get(NVNGX_Parameter_DLSS_Pre_Exposure, &desc.PreExposure);
+    const bool pre_exposure_defaulted = NVNGX_FAILED(pre_exposure_result) ||
+                                        !std::isfinite(desc.PreExposure) ||
+                                        desc.PreExposure <= 0.0f;
+    const float supplied_pre_exposure = desc.PreExposure;
+    if (pre_exposure_defaulted)
+      desc.PreExposure = 1.0f;
+
+    if (!dlss->evaluation_logged) {
+      Logger::info(str::format(
+          "DLSS evaluate: render ", width, "x", height,
+          ", create ", dlss->width, "x", dlss->height, " -> ", dlss->target_width, "x", dlss->target_height,
+          ", bases color=", desc.ColorSubrectBaseX, ",", desc.ColorSubrectBaseY,
+          " depth=", desc.DepthSubrectBaseX, ",", desc.DepthSubrectBaseY,
+          " motion=", desc.MotionVectorSubrectBaseX, ",", desc.MotionVectorSubrectBaseY,
+          " output=", desc.OutputSubrectBaseX, ",", desc.OutputSubrectBaseY,
+          ", mvScale=", desc.MotionVectorScaleX, ",", desc.MotionVectorScaleY,
+          ", jitter=", desc.JitterOffsetX, ",", desc.JitterOffsetY,
+          ", preExposure=", desc.PreExposure,
+          ", preExposureDefaulted=", pre_exposure_defaulted,
+          ", flags=", dlss->flag,
+          ", reset=", desc.InReset));
+      if (pre_exposure_defaulted) {
+        WARN("DLSS evaluate: invalid or absent pre-exposure ", supplied_pre_exposure,
+             "; using neutral 1.0");
+      }
+      dlss->evaluation_logged = true;
+    }
 
     pCtxExt->TemporalUpscale(&desc);
 

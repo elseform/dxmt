@@ -17,6 +17,7 @@ struct DLSSFeature : CommonFeature {
   int quality;
   int flag;
   int enable_output_subrects;
+  bool evaluation_logged = false;
 };
 
 }
