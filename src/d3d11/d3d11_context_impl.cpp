@@ -39,6 +39,7 @@
 #include "d3d11_resource.hpp"
 #include "dxmt_texture.hpp"
 #include "util_flags.hpp"
+#include "util_env.hpp"
 #include "util_math.hpp"
 #include "util_win32_compat.h"
 
@@ -5237,8 +5238,11 @@ class MTLD3D11ContextExt : public IMTLD3D11ContextExt1 {
     uint32_t input_height;
     uint32_t output_width;
     uint32_t output_height;
+    uint32_t depth_width;
+    uint32_t depth_height;
     Rc<TemporalScaler> scaler;
     Rc<Texture> mv_downscaled;
+    Rc<Texture> depth_cropped;
   };
 public:
   MTLD3D11ContextExt(MTLD3D11DeviceContextImplBase<ContextInternalState> *context) : ctx_(context){};
@@ -5289,6 +5293,26 @@ public:
     if (pDesc->ExposureTexture && !(exposure = static_cast<D3D11ResourceCommon *>(pDesc->ExposureTexture)->texture()))
       return;
 
+    const uint32_t content_width = pDesc->InputContentWidth ? pDesc->InputContentWidth : input->width();
+    const uint32_t content_height = pDesc->InputContentHeight ? pDesc->InputContentHeight : input->height();
+
+    const bool depth_crop_enabled = env::getEnvVar("DXMT_DLSS_DEPTH_CROP") != "0";
+    const bool depth_requires_crop = depth->width() != input->width() || depth->height() != input->height() ||
+                                     pDesc->DepthSubrectBaseX != 0 || pDesc->DepthSubrectBaseY != 0;
+    const bool crop_depth = depth_crop_enabled && depth_requires_crop;
+
+    if (!content_width || !content_height ||
+        uint64_t(pDesc->DepthSubrectBaseX) + input->width() > depth->width() ||
+        uint64_t(pDesc->DepthSubrectBaseY) + input->height() > depth->height()) {
+      ERR("TemporalUpscale: invalid depth subrect ", pDesc->DepthSubrectBaseX, ",", pDesc->DepthSubrectBaseY,
+          " + ", input->width(), "x", input->height(), " in ", depth->width(), "x", depth->height());
+      return;
+    }
+    if (crop_depth && depth->sampleCount() != 1) {
+      ERR("TemporalUpscale: cannot crop multisampled depth texture with ", depth->sampleCount(), " samples");
+      return;
+    }
+
     WMTPixelFormat motion_vector_format = GetCorrectMotionVectorFormat(motion_vector->pixelFormat());
     if (motion_vector_format == WMTPixelFormatInvalid) {
       ERR("TemporalUpscale: invalid motion vector format ", motion_vector->pixelFormat());
@@ -5297,6 +5321,7 @@ public:
 
     Rc<TemporalScaler> scaler;
     Rc<Texture> mv_downscaled;
+    Rc<Texture> depth_cropped;
 
     for(CachedTemporalScaler& entry: scaler_cache_) {
       if(pDesc->AutoExposure != entry.auto_exposure) continue;
@@ -5304,6 +5329,9 @@ public:
       if(input->height() != entry.input_height) continue;
       if(output->width() != entry.output_width) continue;
       if(output->height() != entry.output_height) continue;
+      if(depth->width() != entry.depth_width) continue;
+      if(depth->height() != entry.depth_height) continue;
+      if(crop_depth != bool(entry.depth_cropped.ptr())) continue;
       if(input->pixelFormat() != entry.color_pixel_format) continue;
       if(output->pixelFormat() != entry.output_pixel_format) continue;
       if(depth->pixelFormat() != entry.depth_pixel_format) continue;
@@ -5311,6 +5339,7 @@ public:
 
       scaler = entry.scaler;
       mv_downscaled = entry.mv_downscaled;
+      depth_cropped = entry.depth_cropped;
       break;
     }
 
@@ -5330,6 +5359,8 @@ public:
       scaler_entry.input_height = input->height();
       scaler_entry.output_width = output->width();
       scaler_entry.output_height = output->height();
+      scaler_entry.depth_width = depth->width();
+      scaler_entry.depth_height = depth->height();
       info.auto_exposure = scaler_entry.auto_exposure;
       info.input_width = scaler_entry.input_width;
       info.input_height = scaler_entry.input_height;
@@ -5339,7 +5370,62 @@ public:
       info.input_content_min_scale = 1.0f;
       info.input_content_max_scale =  3.0f;
       info.requires_synchronous_initialization = true;
+
+      Logger::info(str::format(
+          "TemporalUpscale layout: color=", input->width(), "x", input->height(), " fmt=", input->pixelFormat(),
+          ", depth=", depth->width(), "x", depth->height(), " fmt=", depth->pixelFormat(),
+          ", motion=", motion_vector->width(), "x", motion_vector->height(), " fmt=", motion_vector->pixelFormat(),
+          ", output=", output->width(), "x", output->height(), " fmt=", output->pixelFormat(),
+          ", content=", content_width, "x", content_height,
+          ", bases color=", pDesc->ColorSubrectBaseX, ",", pDesc->ColorSubrectBaseY,
+          " depth=", pDesc->DepthSubrectBaseX, ",", pDesc->DepthSubrectBaseY,
+          " motion=", pDesc->MotionVectorSubrectBaseX, ",", pDesc->MotionVectorSubrectBaseY,
+          " output=", pDesc->OutputSubrectBaseX, ",", pDesc->OutputSubrectBaseY,
+          ", samples depth=", depth->sampleCount(), " motion=", motion_vector->sampleCount(),
+          ", usage color=", input->usage(), " depth=", depth->usage(),
+          " motion=", motion_vector->usage(), " output=", output->usage(),
+          ", depthCropEnabled=", depth_crop_enabled,
+          " depthCropRequired=", depth_requires_crop,
+          " depthCropApplied=", crop_depth,
+          ", autoExposure=", pDesc->AutoExposure, " reset=", pDesc->InReset));
+
+      if (!depth_crop_enabled && depth_requires_crop) {
+        WARN("TemporalUpscale: depth cropping disabled by DXMT_DLSS_DEPTH_CROP=0");
+      }
+
+      if (pDesc->ColorSubrectBaseX || pDesc->ColorSubrectBaseY ||
+          pDesc->MotionVectorSubrectBaseX || pDesc->MotionVectorSubrectBaseY ||
+          pDesc->OutputSubrectBaseX || pDesc->OutputSubrectBaseY) {
+        WARN("TemporalUpscale: nonzero color, motion, or output subrect bases remain unsupported");
+      }
+
+      if (crop_depth) {
+        WMTTextureInfo tex_info = {};
+        tex_info.width = input->width();
+        tex_info.height = input->height();
+        tex_info.depth = 1;
+        tex_info.array_length = 1;
+        tex_info.mipmap_level_count = 1;
+        tex_info.pixel_format = depth->pixelFormat();
+        tex_info.sample_count = 1;
+        tex_info.type = WMTTextureType2D;
+        tex_info.usage = WMTTextureUsageShaderRead;
+        tex_info.options = WMTResourceStorageModePrivate;
+        scaler_entry.depth_cropped = new Texture(tex_info, this->ctx_->device->GetMTLDevice());
+        depth_cropped = scaler_entry.depth_cropped;
+        Flags<TextureAllocationFlag> flags;
+        flags.set(TextureAllocationFlag::GpuPrivate);
+        depth_cropped->rename(depth_cropped->allocate(flags));
+        Logger::info(str::format(
+            "TemporalUpscale: cropping depth subrect ", pDesc->DepthSubrectBaseX, ",", pDesc->DepthSubrectBaseY,
+            " + ", input->width(), "x", input->height(), " from ", depth->width(), "x", depth->height()));
+      }
+
       scaler_entry.scaler = new TemporalScaler(ctx_->device->GetMTLDevice(), info);
+      if (!scaler_entry.scaler->scaler()) {
+        ERR("TemporalUpscale: MetalFX temporal scaler creation failed");
+        return;
+      }
       if (pDesc->MotionVectorInDisplayRes) {
         WMTTextureInfo tex_info;
         tex_info.width = scaler_entry.input_width;
@@ -5367,12 +5453,13 @@ public:
     ctx_->InvalidateCurrentPass();
     ctx_->EmitOP([input = std::move(input), output = std::move(output),
                   depth = std::move(depth),
+                  depth_cropped = std::move(depth_cropped),
                   motion_vector = std::move(motion_vector),
                   exposure = std::move(exposure), scaler = std::move(scaler),
                   props =
                       WMTFXTemporalScalerProps{
-                          pDesc->InputContentWidth,
-                          pDesc->InputContentHeight,
+                          content_width,
+                          content_height,
                           (bool)pDesc->InReset,
                           (bool)pDesc->DepthReversed,
                           pDesc->MotionVectorScaleX,
@@ -5381,8 +5468,29 @@ public:
                           pDesc->JitterOffsetY,
                           pDesc->PreExposure,
                       },
-                  motion_vector_format, mv_downscaled = std::move(mv_downscaled)
+                  motion_vector_format, mv_downscaled = std::move(mv_downscaled),
+                  depth_origin = WMTOrigin{pDesc->DepthSubrectBaseX, pDesc->DepthSubrectBaseY, 0}
                 ](ArgumentEncodingContext &enc) mutable {
+      Rc<Texture> depth_input = depth;
+      if (depth_cropped) {
+        enc.startBlitPass();
+        auto src = enc.access(depth, depth->fullView, ResourceAccess::Read).texture;
+        auto dst = enc.access(depth_cropped, depth_cropped->fullView, ResourceAccess::Write).texture;
+        auto &copy = enc.encodeBlitCommand<wmtcmd_blit_copy_from_texture_to_texture>();
+        copy.type = WMTBlitCommandCopyFromTextureToTexture;
+        copy.src = src;
+        copy.src_slice = 0;
+        copy.src_level = 0;
+        copy.src_origin = depth_origin;
+        copy.src_size = {depth_cropped->width(), depth_cropped->height(), 1};
+        copy.dst = dst;
+        copy.dst_slice = 0;
+        copy.dst_level = 0;
+        copy.dst_origin = {0, 0, 0};
+        enc.endPass();
+        depth_input = depth_cropped;
+      }
+
       auto mv_view = motion_vector->createView(
           {.format = motion_vector_format,
            .type = WMTTextureType2D,
@@ -5407,9 +5515,9 @@ public:
         WMTFXTemporalScalerProps new_props = props;
         new_props.motion_vector_scale_x = 1.0;
         new_props.motion_vector_scale_y = 1.0;
-        enc.upscaleTemporal(input, output, depth, mv_downscaled, 0, exposure, scaler, new_props);
+        enc.upscaleTemporal(input, output, depth_input, mv_downscaled, 0, exposure, scaler, new_props);
       } else {
-        enc.upscaleTemporal(input, output, depth, motion_vector, mv_view, exposure, scaler, props);
+        enc.upscaleTemporal(input, output, depth_input, motion_vector, mv_view, exposure, scaler, props);
       }
     });
   }
