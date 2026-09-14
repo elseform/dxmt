@@ -5,6 +5,14 @@
 struct MTL_TEMPORAL_UPSCALE_D3D11_DESC {
   UINT InputContentWidth; // can be 0, which means full width
   UINT InputContentHeight; // can be 0, which means full height
+  UINT ColorSubrectBaseX;
+  UINT ColorSubrectBaseY;
+  UINT DepthSubrectBaseX;
+  UINT DepthSubrectBaseY;
+  UINT MotionVectorSubrectBaseX;
+  UINT MotionVectorSubrectBaseY;
+  UINT OutputSubrectBaseX;
+  UINT OutputSubrectBaseY;
   BOOL AutoExposure;
   BOOL InReset;
   BOOL DepthReversed;
