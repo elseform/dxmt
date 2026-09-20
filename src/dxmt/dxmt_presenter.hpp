@@ -26,8 +26,11 @@ struct DXMTGammaRamp {
 class Presenter : public RcObject {
 public:
   Presenter(
-      WMT::Device device, WMT::MetalLayer layer, InternalCommandLibrary &lib, float scale_factor, uint8_t sample_count
+      WMT::Device device, WMT::MetalLayer layer, InternalCommandLibrary &lib, float scale_factor, uint8_t sample_count,
+      bool default_display_sync = false
   );
+
+  bool changeDisplaySync(bool enabled);
 
   bool changeLayerProperties(
       WMTPixelFormat format, WMTColorSpace colorspace, double width, double height, uint8_t sample_count
