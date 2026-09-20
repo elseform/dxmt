@@ -143,9 +143,13 @@ public:
       scale_factor = std::max(Config::getInstance().getOption<float>("d3d11.metalSpatialUpscaleFactor", 2), 1.0f);
     }
 
+    display_sync_ = Config::getInstance().getOption<Tristate>("d3d11.displaySync", Tristate::Auto);
+    bool initial_display_sync = (display_sync_ == Tristate::True);
+
     presenter = Rc(new Presenter(pDevice->GetMTLDevice(), layer_weak_,
                                  pDevice->GetDXMTDevice().queue().cmd_library,
-                                 scale_factor, desc_.SampleDesc.Count));
+                                 scale_factor, desc_.SampleDesc.Count,
+                                 initial_display_sync));
 
     frame_latency = kSwapchainLatency;
     present_semaphore_ = CreateSemaphore(nullptr, frame_latency,
@@ -778,6 +782,11 @@ public:
       auto output = static_cast<MTLDXGIOutput *>(target_.ptr());
       presenter->changeGammaRamp(output->GetGammaRamp());
     }
+
+    bool effective_display_sync = (SyncInterval != 0);
+    applyTristate(effective_display_sync, display_sync_);
+    presenter->changeDisplaySync(effective_display_sync);
+
     if constexpr (EnableMetalFX) {
       chunk->emitcc([
         this, vsync_duration, backbuffer = backbuffer_->texture(),
@@ -1084,6 +1093,8 @@ private:
   Rc<Presenter> presenter;
   ModeSetGuard modeset_guard_;
   dxmt::mutex mutex_;
+
+  Tristate display_sync_ = Tristate::Auto;
 
   bool handle_alt_tab_;
 

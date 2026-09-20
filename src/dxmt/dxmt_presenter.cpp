@@ -8,7 +8,10 @@
 
 namespace dxmt {
 
-Presenter::Presenter(WMT::Device device, WMT::MetalLayer layer, InternalCommandLibrary &lib, float scale_factor, uint8_t sample_count) :
+Presenter::Presenter(
+    WMT::Device device, WMT::MetalLayer layer, InternalCommandLibrary &lib, float scale_factor, uint8_t sample_count,
+    bool default_display_sync
+) :
     device_(device),
     layer_(layer),
     lib_(lib),
@@ -16,7 +19,7 @@ Presenter::Presenter(WMT::Device device, WMT::MetalLayer layer, InternalCommandL
   layer_.getProps(layer_props_);
   layer_props_.device = device;
   layer_props_.opaque = true;
-  layer_props_.display_sync_enabled = false;
+  layer_props_.display_sync_enabled = default_display_sync;
   layer_props_.framebuffer_only = false; // how strangely setting it true results in worse performance
   layer_props_.contents_scale = layer_props_.contents_scale * scale_factor;
 
@@ -32,6 +35,15 @@ Presenter::Presenter(WMT::Device device, WMT::MetalLayer layer, InternalCommandL
   texture_info.sample_count = 1;
   texture_info.array_length = 1;
   gamma_lut_texture_ = device.newTexture(texture_info);
+}
+
+bool
+Presenter::changeDisplaySync(bool enabled) {
+  if (layer_props_.display_sync_enabled == enabled)
+    return false;
+  layer_props_.display_sync_enabled = enabled;
+  layer_.setProps(layer_props_);
+  return true;
 }
 
 bool
