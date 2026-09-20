@@ -7,6 +7,7 @@
 #include "../d3d11/d3d11_interfaces.hpp"
 #include "../dxgi/dxgi_interfaces.h"
 #include <cmath>
+#include <utility>
 
 namespace dxmt {
 Logger Logger::s_instance("nvngx.log");
@@ -107,8 +108,18 @@ NVSDK_NGX_D3D11_EvaluateFeature(
     ID3D11DeviceContext *context, const unsigned int *handle, NVNGXParameter *params, void *callback
 ) {
   auto parameters = static_cast<ParametersImpl *>(params);
-  Logger::info(str::format(
-      "NVSDK_NGX_D3D11_EvaluateFeature: called, feature=", static_cast<CommonFeature *>((void *)handle)->feature));
+  // EvaluateFeature runs every frame while DLSS is active (hundreds of calls
+  // per session); at the default DXMT_LOG_LEVEL=info this line's str::format
+  // and Logger::info (mutex lock + std::endl-flushed file write) would
+  // otherwise execute unconditionally every frame for a message whose
+  // content never changes, since the feature type is fixed per handle. Log
+  // it once, matching the evaluation_logged guard already used a few lines
+  // below for the more detailed per-feature log.
+  static bool s_logged_evaluate_call = false;
+  if (!std::exchange(s_logged_evaluate_call, true)) {
+    Logger::info(str::format(
+        "NVSDK_NGX_D3D11_EvaluateFeature: called, feature=", static_cast<CommonFeature *>((void *)handle)->feature));
+  }
   switch (static_cast<CommonFeature *>((void *)handle)->feature) {
   case NVNGX_FEATURE_SUPERSAMPLING: {
     auto dlss = static_cast<DLSSFeature *>((void *)handle);
@@ -377,8 +388,18 @@ NVSDK_NGX_D3D11_GetCapabilityParameters(NVNGXParameter **out_params) {
 
 NVNGX_API NVNGX_RESULT
 NVSDK_NGX_D3D11_GetParameters(NVNGXParameter **out_params) {
-  // FIXME: leak!
-  return NVSDK_NGX_D3D11_GetCapabilityParameters(out_params);
+  // Unlike AllocateParameters, GetParameters returns an NGX-runtime-owned
+  // block callers don't destroy, so reuse one cached instance instead of
+  // leaking a fresh ParametersImpl on every call.
+  static NVNGXParameter *cached = [] {
+    NVNGXParameter *params = nullptr;
+    NVSDK_NGX_D3D11_GetCapabilityParameters(&params);
+    return params;
+  }();
+  if (!cached)
+    return NVNGX_RESULT_FAIL;
+  *out_params = cached;
+  return NVNGX_RESULT_OK;
 }
 
 NVNGX_API NVNGX_RESULT
