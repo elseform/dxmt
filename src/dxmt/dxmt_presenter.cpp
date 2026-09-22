@@ -42,7 +42,13 @@ Presenter::changeDisplaySync(bool enabled) {
   if (layer_props_.display_sync_enabled == enabled)
     return false;
   layer_props_.display_sync_enabled = enabled;
-  layer_.setProps(layer_props_);
+  // While a deferred change is pending (pso_valid cleared), layer_props_ also
+  // holds a new pixel format / drawable size that must not reach the layer
+  // before synchronizeLayerProperties() drains in-flight frames and rebuilds
+  // the present pipelines. That call pushes layer_props_ in full, including
+  // this flag.
+  if (pso_valid.test())
+    layer_.setProps(layer_props_);
   return true;
 }
 
