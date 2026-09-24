@@ -26,7 +26,7 @@ built from.
 
 ### Fixes on top of upstream
 
-All authored by `elseform`, in commit order:
+In commit order:
 
 - **Winemetal resource lifetime/argument-buffer hardening**. Tracks Metal hazard mode for D3D11 resource allocations and
   moves the winemetal argument-buffer allocator to a Metal-owned allocation,
