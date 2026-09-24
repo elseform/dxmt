@@ -31,7 +31,7 @@ built from.
 
 ### Fixes on top of upstream
 
-All authored by `elseform`, in commit order:
+In commit order:
 
 - **Winemetal resource lifetime/argument-buffer hardening**
   (`059cd88`). Tracks Metal hazard mode for D3D11 resource allocations and
