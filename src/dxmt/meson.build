@@ -23,6 +23,7 @@ dxmt_src = [
   'dxmt_counter.cpp',
   'dxmt_fence.cpp',
   'dxmt_keyed_mutex.cpp',
+  'dxmt_memory_guard.cpp',
 ]
 
 dxmt_shaders = [

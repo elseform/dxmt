@@ -34,6 +34,7 @@
 #include "dxmt_buffer.hpp"
 #include "dxmt_context.hpp"
 #include "dxmt_format.hpp"
+#include "dxmt_memory_guard.hpp"
 #include "dxmt_ring_bump_allocator.hpp"
 #include "dxmt_staging.hpp"
 #include "d3d11_resource.hpp"
@@ -4373,7 +4374,9 @@ public:
     }
 
     cmdbuf_state = CommandBufferState::Idle;
-    if (promote_flush && !defer_commit) {
+    // Under heavy memory pressure, commit at every pass boundary so each
+    // command buffer references less memory at once.
+    if ((promote_flush || CurrentMemoryPressure() == MemoryPressureLevel::Split) && !defer_commit) {
       Commit();
       return true;
     }

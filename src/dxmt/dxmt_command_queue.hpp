@@ -26,6 +26,7 @@
 #include "dxmt_command_list.hpp"
 #include "dxmt_context.hpp"
 #include "dxmt_counter.hpp"
+#include "dxmt_memory_guard.hpp"
 #include "dxmt_occlusion_query.hpp"
 #include "dxmt_resource_initializer.hpp"
 #include "dxmt_ring_bump_allocator.hpp"
@@ -210,6 +211,7 @@ private:
   dxmt::thread finishThread;
   WMT::Device device;
   WMT::Reference<WMT::CommandQueue> commandQueue;
+  MemoryGuard memory_guard;
 
   obj_handle_t shared_event_listener;
   dxmt::thread event_listener_thread;

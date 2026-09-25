@@ -26,6 +26,12 @@ public:
 
   void free_blocks(uint64_t coherent_id);
 
+  /**
+   * Like free_blocks, but releases every block the GPU is done with instead of
+   * keeping idle blocks around for reuse. Used under memory pressure.
+   */
+  void trim_blocks(uint64_t coherent_id);
+
 private:
   struct Allocation {
     size_t allocated_size;
@@ -218,6 +224,15 @@ RingBumpState<Allocator, BlockSize, mutex>::free_blocks(uint64_t coherent_id) {
     }
     front.inc_time_to_live++;
     break;
+  }
+};
+
+template <typename Allocator, size_t BlockSize, class mutex>
+void
+RingBumpState<Allocator, BlockSize, mutex>::trim_blocks(uint64_t coherent_id) {
+  std::lock_guard<mutex> lock(mutex_);
+  while (!fifo.empty() && fifo.front().last_used_seq_id <= coherent_id) {
+    fifo.pop();
   }
 };
 

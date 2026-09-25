@@ -1,5 +1,6 @@
 #include "dxmt_dynamic.hpp"
 #include "dxmt_texture.hpp"
+#include "dxmt_memory_guard.hpp"
 
 namespace dxmt {
 DynamicBuffer::DynamicBuffer(Buffer *buffer, Flags<BufferAllocationFlag> flags) :
@@ -33,6 +34,11 @@ DynamicBuffer::allocate(uint64_t coherent_seq_id) {
     ret = std::move(entry.allocation);
     fifo.pop();
     break;
+  }
+  if (CurrentMemoryPressure() != MemoryPressureLevel::Normal) {
+    // Drop the remaining idle renames instead of keeping them for reuse.
+    while (!fifo.empty() && fifo.front().will_free_at <= coherent_seq_id)
+      fifo.pop();
   }
   if (!ret.ptr())
     ret = buffer->allocate(flags_);
@@ -101,6 +107,11 @@ DynamicLinearTexture::allocate(uint64_t coherent_seq_id) {
     ret = std::move(entry.allocation);
     fifo.pop();
     break;
+  }
+  if (CurrentMemoryPressure() != MemoryPressureLevel::Normal) {
+    // Drop the remaining idle renames instead of keeping them for reuse.
+    while (!fifo.empty() && fifo.front().will_free_at <= coherent_seq_id)
+      fifo.pop();
   }
   if (!ret.ptr())
     ret = texture->allocate(flags_);

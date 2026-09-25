@@ -38,6 +38,7 @@ CommandQueue::CommandQueue(WMT::Device device) :
     finishThread([this]() { this->WaitForFinishThread(); }),
     device(device),
     commandQueue(device.newCommandQueue(kCommandChunkCount)),
+    memory_guard(device),
     shared_event_listener(SharedEventListener_create()),
     event_listener_thread([this]() { SharedEventListener_start(this->shared_event_listener); }),
     staging_allocator({
@@ -101,6 +102,13 @@ CommandQueue::CommitCurrentChunk() {
   chunk.resource_initializer_event_id = initializer.flushToWait();
   auto& statistics = CurrentFrameStatistics();
   statistics.command_buffer_count++;
+  if (memory_guard.sample() != MemoryPressureLevel::Normal && chunk_id > 1) {
+    // Near the working-set limit: keep at most one chunk in flight so the GPU
+    // never needs the memory of several command buffers at once.
+    auto t0 = clock::now();
+    cpu_coherent.wait(chunk_id - 1);
+    statistics.commit_interval += (clock::now() - t0);
+  }
 #if ASYNC_ENCODING
   ready_for_encode.fetch_add(1, std::memory_order_release);
   ready_for_encode.notify_one();
@@ -215,9 +223,15 @@ CommandQueue::WaitForFinishThread() {
     chunk_ongoing.fetch_sub(1, std::memory_order_release);
     chunk_ongoing.notify_one();
 
-    staging_allocator.free_blocks(internal_seq);
-    copy_temp_allocator.free_blocks(internal_seq);
-    argbuf_allocator.free_blocks(internal_seq);
+    if (memory_guard.level() != MemoryPressureLevel::Normal) {
+      staging_allocator.trim_blocks(internal_seq);
+      copy_temp_allocator.trim_blocks(internal_seq);
+      argbuf_allocator.trim_blocks(internal_seq);
+    } else {
+      staging_allocator.free_blocks(internal_seq);
+      copy_temp_allocator.free_blocks(internal_seq);
+      argbuf_allocator.free_blocks(internal_seq);
+    }
 
     internal_seq++;
   }

@@ -1,4 +1,5 @@
 #include "com/com_guid.hpp"
+#include <algorithm>
 #include "com/com_pointer.hpp"
 #include "dxgi_options.hpp"
 #include "util_string.hpp"
@@ -177,6 +178,8 @@ public:
       pDesc->DedicatedVideoMemory = device_.recommendedMaxWorkingSetSize() / 2; // FIXME: use a more appropriate value
     else
       pDesc->DedicatedVideoMemory = device_.recommendedMaxWorkingSetSize();
+    if (options_.maxDeviceMemory)
+      pDesc->DedicatedVideoMemory = std::min<uint64_t>(pDesc->DedicatedVideoMemory, options_.maxDeviceMemory);
     pDesc->DedicatedSystemMemory = 0;
     pDesc->SharedSystemMemory = 0;
     pDesc->AdapterLuid = GetAdapterLuid(device_);
@@ -245,6 +248,8 @@ public:
 
     // we don't actually care about MemorySegmentGroup
     pVideoMemoryInfo->Budget = device_.recommendedMaxWorkingSetSize();
+    if (options_.maxDeviceMemory)
+      pVideoMemoryInfo->Budget = std::min<uint64_t>(pVideoMemoryInfo->Budget, options_.maxDeviceMemory);
     pVideoMemoryInfo->CurrentUsage = device_.currentAllocatedSize();
     pVideoMemoryInfo->AvailableForReservation = 0;
     pVideoMemoryInfo->CurrentReservation =
