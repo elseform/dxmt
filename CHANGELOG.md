@@ -9,6 +9,8 @@ upstream `3Shain/dxmt` is in the README, "Fixes introduced".
 Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 (`v0.80` plus 244 upstream commits).
 
+All changes in this release have been verified in game.
+
 ### Fixed
 
 - **Startup crash.** The game could crash during startup with
@@ -33,14 +35,15 @@ Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
   shader's pipelines are built, its parsed intermediate representation is
   freed and rebuilt from the kept DXBC only if a new pipeline variant needs it,
   instead of staying in memory for the whole session. Also fixes a leak of each
-  shader's argument-info buffer. Ported from NerRobDog/dxmt. Not measured
-  against a build without it. (`2d18458`)
+  shader's argument-info buffer. Ported from NerRobDog/dxmt. Verified in game.
+  (`2d18458`)
 
 ### Opt-in
 
 - **Blit encoder merging** with `DXMT_REORDER_BLITS=1`. Moves independent
   copy and upload work together so fewer encoders and render passes are split
-  per frame. Off by default; not yet evaluated in game. (`05ba201`)
+  per frame. Off by default; verified in game with `DXMT_REORDER_BLITS=1`.
+  (`05ba201`)
 
 ### Diagnostics
 
