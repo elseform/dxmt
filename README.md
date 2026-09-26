@@ -54,6 +54,24 @@ In commit order:
   hardcoded off, and stops `changeDisplaySync()` from pushing layer
   properties to the Metal layer while a pixel-format/size/sample-count/
   color-space change from `changeLayerProperties()` is still deferred.
+- **Blit encoder merging, opt-in**. With `DXMT_REORDER_BLITS=1`,
+  a blit encoder is moved past independent encoders into the next blit encoder,
+  so fewer encoders and render passes are split per frame. Off by default.
+- **Shader IR release**. After a shader's pipelines are compiled,
+  its parsed intermediate representation is freed and rebuilt from the
+  retained DXBC only if a new pipeline variant needs it
+  (`d3d11.releaseShaderIR`, default on). Ported from NerRobDog/dxmt. Also frees
+  a shader's argument-info buffer, which was leaked.
+- **Pipeline cache teardown order**. The compile worker threads
+  are joined before the shader and pipeline tasks they run are freed, fixing a
+  startup crash (`unrecognized selector ... 0xf` in
+  `newComputePipelineStateWithDescriptor`) when the first D3D11 device is
+  released. Runtime-verified.
+- **Resource-initializer upload cap**. Textures created with
+  initial data are submitted in batches of at most 64 MB, waiting for the
+  previous batch, instead of staging a whole level load in the upload heap,
+  which grew to gigabytes, kept them for the rest of the session, and ended in
+  a GPU timeout on the first frame.
 
 Everything else in `release`'s history versus upstream is the rebase carrying
 these same fixes forward onto newer upstream commits (`vsync-updates` was
