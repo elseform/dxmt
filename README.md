@@ -73,6 +73,10 @@ In commit order:
   previous batch, instead of staging a whole level load in the upload heap,
   which grew to gigabytes, kept them for the rest of the session, and ended in
   a GPU timeout on the first frame.
+- **Memory accounting log**. With `DXMT_LOG_LEVEL=debug`, every
+  5 s the log shows the Metal device's allocated size next to DXMT's own
+  buffer allocations, parked rename copies and staging ring blocks. A
+  diagnostic; at the default log level it costs one comparison per frame.
 
 Everything else in `release`'s history versus upstream is the rebase carrying
 these same fixes forward onto newer upstream commits (the fixes were rebased
