@@ -665,6 +665,11 @@ public:
   }
 
   uint64_t
+  gpuStartTime() {
+    return MTLCommandBuffer_property(handle, WMTCommandBufferPropertyGPUStartTime);
+  }
+
+  uint64_t
   gpuEndTime() {
     return MTLCommandBuffer_property(handle, WMTCommandBufferPropertyGPUEndTime);
   }

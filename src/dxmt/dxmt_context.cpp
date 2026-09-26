@@ -23,7 +23,7 @@
 #include "dxmt_format.hpp"
 #include "dxmt_occlusion_query.hpp"
 #include "dxmt_presenter.hpp"
-#include "util_env.hpp"
+#include "dxmt_perf.hpp"
 #include "wsi_platform.hpp"
 #include <cstdint>
 #include <cfloat>
@@ -41,7 +41,6 @@ ArgumentEncodingContext::ArgumentEncodingContext(CommandQueue &queue, WMT::Devic
     timestamp_state_(device),
     device_(device),
     queue_(queue) {
-  reorder_blits_ = env::getEnvVar("DXMT_REORDER_BLITS") == "1";
   dummy_sampler_info_.support_argument_buffers = true;
   dummy_sampler_info_.border_color = WMTSamplerBorderColorTransparentBlack;
   dummy_sampler_info_.compare_function = WMTCompareFunctionNever;
@@ -911,10 +910,12 @@ ArgumentEncodingContext::flushCommands(WMT::CommandBuffer cmdbuf, uint64_t seqId
   }
 
   if (encoder_count > 1) {
+    /* read once so a runtime toggle cannot change behavior halfway through a command buffer */
+    const bool reorder_blits = perfFlag(PerfFlag::ReorderBlits);
     unsigned j, i;
     for (j = encoder_count - 2; j != ~0u; j--) {
       // TODO(fences): we don't actively move encoders other than clear, render and (opt-in) blit
-      if (encoders[j]->type == EncoderType::Blit && reorder_blits_) {
+      if (encoders[j]->type == EncoderType::Blit && reorder_blits) {
         /*
         A blit encoder is only delayed into a later blit encoder. Dependencies
         are only recorded as strong fences within kLane encoder ids, so the

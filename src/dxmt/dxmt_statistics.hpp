@@ -55,6 +55,14 @@ struct FrameStatistics {
   clock::duration encode_flush_interval{};
   clock::duration drawable_blocking_interval{};
   clock::duration present_latency_interval{};
+  /* time the app thread slept in the frame limiter after presenting */
+  clock::duration limiter_interval{};
+  /* app-thread timestamp of the Present that ended this frame */
+  clock::time_point present_time{};
+  /* sum of GPU execution time of this frame's command buffers */
+  uint64_t gpu_time_ns = 0;
+  /* perf flags active when this frame was presented */
+  uint32_t perf_flags = 0;
   ScalerInfo last_scaler_info{};
 
   void
@@ -78,6 +86,10 @@ struct FrameStatistics {
     encode_flush_interval = {};
     drawable_blocking_interval = {};
     present_latency_interval = {};
+    limiter_interval = {};
+    present_time = {};
+    gpu_time_ns = 0;
+    perf_flags = 0;
     last_scaler_info.type = {};
   };
 };
@@ -145,6 +157,7 @@ public:
       max_.drawable_blocking_interval =
           std::max(max_.drawable_blocking_interval, frames_[i].drawable_blocking_interval);
       max_.present_latency_interval = std::max(max_.present_latency_interval, frames_[i].present_latency_interval);
+      max_.gpu_time_ns = std::max(max_.gpu_time_ns, frames_[i].gpu_time_ns);
 
       average_.command_buffer_count += frames_[i].command_buffer_count;
       average_.sync_count += frames_[i].sync_count;
@@ -155,6 +168,8 @@ public:
       average_.encode_flush_interval += frames_[i].encode_flush_interval;
       average_.drawable_blocking_interval += frames_[i].drawable_blocking_interval;
       average_.present_latency_interval += frames_[i].present_latency_interval;
+      average_.limiter_interval += frames_[i].limiter_interval;
+      average_.gpu_time_ns += frames_[i].gpu_time_ns;
     }
     average_.command_buffer_count /= (kFrameStatisticsCount - 1);
     average_.sync_count /= (kFrameStatisticsCount - 1);
@@ -165,6 +180,8 @@ public:
     average_.encode_flush_interval /= (kFrameStatisticsCount - 1);
     average_.drawable_blocking_interval /= (kFrameStatisticsCount - 1);
     average_.present_latency_interval /= (kFrameStatisticsCount - 1);
+    average_.limiter_interval /= (kFrameStatisticsCount - 1);
+    average_.gpu_time_ns /= (kFrameStatisticsCount - 1);
   };
 };
 

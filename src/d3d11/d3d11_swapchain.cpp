@@ -8,6 +8,7 @@
 #include "d3d11_context.hpp"
 #include "dxmt_context.hpp"
 #include "dxmt_hud_state.hpp"
+#include "dxmt_perf.hpp"
 #include "dxmt_statistics.hpp"
 #include "dxmt_presenter.hpp"
 #include "log/log.hpp"
@@ -34,6 +35,47 @@ This value is 1 by default.
 constexpr size_t kSwapchainLatency = 1;
 
 namespace dxmt {
+
+/**
+Paces the app thread to a steady present cadence (PerfFlag::FrameLimiter), so the
+game's frame timing is even and matches the display pacing set through
+presentDrawableAfterMinimumDuration.
+*/
+class FrameLimiter {
+public:
+  void
+  wait(double interval_seconds, FrameStatistics &statistics) {
+    auto interval = std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(interval_seconds));
+    auto now = clock::now();
+    if (next_ == clock::time_point{} || now > next_ + interval) {
+      // first frame, or more than a whole interval late: resynchronize instead of catching up
+      next_ = now + interval;
+      return;
+    }
+    if (now < next_) {
+      sleepUntil(next_);
+      statistics.limiter_interval += clock::now() - now;
+    }
+    next_ += interval;
+  }
+
+private:
+  static void
+  sleepUntil(clock::time_point deadline) {
+    for (;;) {
+      auto remaining = deadline - clock::now();
+      if (remaining <= clock::duration::zero())
+        return;
+      auto remaining_ms = std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count();
+      if (remaining_ms > 2)
+        Sleep(DWORD(remaining_ms - 1));
+      else
+        SwitchToThread(); // yield for the last milliseconds instead of oversleeping
+    }
+  }
+
+  clock::time_point next_{};
+};
 
 WMTPixelFormat ConvertSwapChainFormat(DXGI_FORMAT format) {
   switch (format) {
@@ -172,6 +214,7 @@ public:
 
     preferred_max_frame_rate =
         Config::getInstance().getOption<int>("d3d11.preferredMaxFrameRate", 0);
+    frame_limit_ = Config::getInstance().getOption<int>("d3d11.frameLimit", 0);
     wsi::WsiMode current_mode;
     if (wsi::getCurrentDisplayMode(monitor_, &current_mode) &&
         current_mode.refreshRate.denominator != 0 &&
@@ -757,6 +800,8 @@ public:
     if (PresentFlags & DXGI_PRESENT_TEST)
       return hr;
 
+    pollPerfHotkeys();
+
     if (should_exit_fs)
       SetFullscreenState(FALSE, nullptr);
 
@@ -769,11 +814,17 @@ public:
       return hr;
     }
 
+    const bool display_sync_off = perfFlag(PerfFlag::DisplaySyncOff);
+    const UINT sync_interval = display_sync_off ? 0 : SyncInterval;
     double vsync_duration =
-        std::max(SyncInterval * 1.0 /
+        std::max(sync_interval * 1.0 /
                      (preferred_max_frame_rate ? preferred_max_frame_rate
                                                : init_refresh_rate_),
                  preferred_max_frame_rate ? 1.0 / preferred_max_frame_rate : 0);
+    const bool frame_limiter = perfFlag(PerfFlag::FrameLimiter);
+    const double limiter_interval = frame_limiter ? FrameLimiterInterval() : 0;
+    // present no sooner than the limiter cadence, so display pacing matches the app thread
+    vsync_duration = std::max(vsync_duration, limiter_interval);
 
     auto &cmd_queue = device_->GetDXMTDevice().queue();
     auto chunk = cmd_queue.CurrentChunk();
@@ -785,6 +836,8 @@ public:
 
     bool effective_display_sync = (SyncInterval != 0);
     applyTristate(effective_display_sync, display_sync_);
+    if (display_sync_off)
+      effective_display_sync = false;
     presenter->changeDisplaySync(effective_display_sync);
 
     if constexpr (EnableMetalFX) {
@@ -822,8 +875,24 @@ public:
 
     cmd_queue.PresentBoundary();
 
+    if (frame_limiter)
+      frame_limiter_.wait(limiter_interval, cmd_queue.CurrentFrameStatistics());
+
     return hr;
   };
+
+  /* Target interval of the frame limiter in seconds: d3d11.frameLimit, else
+     d3d11.preferredMaxFrameRate, else half the display refresh rate. */
+  double
+  FrameLimiterInterval() const {
+    if (frame_limit_ > 0)
+      return 1.0 / frame_limit_;
+    if (preferred_max_frame_rate > 0)
+      return 1.0 / preferred_max_frame_rate;
+    if (init_refresh_rate_ > 0 && init_refresh_rate_ < 1000)
+      return 2.0 / init_refresh_rate_;
+    return 1.0 / 30;
+  }
 
   void UpdateStatistics(const FrameStatisticsContainer& statistics, uint64_t frame_id) {
     hud.begin();
@@ -882,6 +951,14 @@ public:
         std::min(frame.render_pass_optimized, 999u),
         std::min(frame.clear_pass_count - frame.clear_pass_optimized, 999u), std::min(frame.clear_pass_optimized, 99u)
     ));
+    {
+      // GPU work of a frame a few presents back is complete by now
+      auto &settled = statistics.at(frame_id - 4);
+      hud.printLine(std::format(
+          "GPU:{:5.1f} Lim:{:4.1f} {}", std::min(settled.gpu_time_ns / 1e6, 999.9),
+          std::min(average.limiter_interval.count() / 1000000.0, 99.9), perfFlagsString(perfFlags())
+      ));
+    }
     {
       /* scaler info */
       auto &info = frame.last_scaler_info;
@@ -1089,6 +1166,8 @@ private:
   DXGI_COLOR_SPACE_TYPE colorspace_ = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
   double init_refresh_rate_ = DBL_MAX;
   int preferred_max_frame_rate = 0;
+  int frame_limit_ = 0;
+  FrameLimiter frame_limiter_;
   HUDState hud;
   Rc<Presenter> presenter;
   ModeSetGuard modeset_guard_;

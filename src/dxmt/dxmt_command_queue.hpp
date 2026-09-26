@@ -27,9 +27,11 @@
 #include "dxmt_context.hpp"
 #include "dxmt_counter.hpp"
 #include "dxmt_occlusion_query.hpp"
+#include "dxmt_perf.hpp"
 #include "dxmt_resource_initializer.hpp"
 #include "dxmt_ring_bump_allocator.hpp"
 #include "dxmt_statistics.hpp"
+#include "dxmt_stats_log.hpp"
 #include "log/log.hpp"
 #include "thread.hpp"
 #include "util_cpu_fence.hpp"
@@ -226,6 +228,7 @@ private:
   RingBumpState<HostBufferBlockAllocator, kCommandChunkCPUHeapSize, dxmt::null_mutex> cpu_command_allocator;
   RingBumpState<HostBufferBlockAllocator, 0x1000 /* 4kB */> reftracker_storage_allocator;
   CaptureState capture_state;
+  StatsLog stats_log_;
 
 public:
   InternalCommandLibrary cmd_library;
@@ -293,6 +296,9 @@ public:
 
   void
   PresentBoundary() {
+    auto &ending = statistics.at(frame_count);
+    ending.present_time = clock::now();
+    ending.perf_flags = perfFlags();
     statistics.compute(frame_count);
     frame_count++;
     statistics.at(frame_count).reset();
@@ -304,6 +310,7 @@ public:
       statistics.at(frame_count).present_latency_interval += (t1 - t0);
     }
     statistics.at(frame_count).latency = max_latency_;
+    stats_log_.onPresent(statistics, frame_count, max_latency_);
   }
 
   uint32_t GetMaxLatency() { return max_latency_; }

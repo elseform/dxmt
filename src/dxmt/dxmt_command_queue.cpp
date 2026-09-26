@@ -200,6 +200,11 @@ CommandQueue::WaitForFinishThread() {
     }
     if (chunk.attached_cmdbuf.status() == WMTCommandBufferStatusError) {
       ERR("Device error at frame ", chunk.frame_, ": ", chunk.attached_cmdbuf.error().description().getUTF8String());
+    } else {
+      uint64_t gpu_start = chunk.attached_cmdbuf.gpuStartTime();
+      uint64_t gpu_end = chunk.attached_cmdbuf.gpuEndTime();
+      if (gpu_end > gpu_start)
+        statistics.at(chunk.frame_).gpu_time_ns += gpu_end - gpu_start;
     }
     if (auto logs = chunk.attached_cmdbuf.logs()) {
       for (auto &log : logs.elements()) {
