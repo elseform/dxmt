@@ -2,9 +2,9 @@
 
 Changes to the `release` branch of `elseform/dxmt`, newest first. Releases
 are tagged `gamma-YYYY.MM.DD`. The full list of fixes this fork carries over
-upstream `3Shain/dxmt` is in the README, "Fixes on top of upstream".
+upstream `3Shain/dxmt` is in the README, "Fixes introduced".
 
-## Unreleased
+## gamma-2026.09.27 (2026-09-27)
 
 Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 (`v0.80` plus 244 upstream commits).
