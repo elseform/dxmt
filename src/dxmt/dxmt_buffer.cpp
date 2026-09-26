@@ -18,6 +18,7 @@
 
 #include "dxmt_buffer.hpp"
 #include "dxmt_format.hpp"
+#include "dxmt_memstats.hpp"
 #include "thread.hpp"
 #include "util_likely.hpp"
 #include "util_math.hpp"
@@ -48,6 +49,8 @@ BufferAllocation::BufferAllocation(WMT::Device device, const WMTBufferInfo &info
   obj_ = device.newBuffer(info_);
   gpuAddress_ = info_.gpu_address;
   mappedMemory_ = info_.memory.get_accessible_or_null();
+  memstats::buffer_bytes += info_.length;
+  memstats::buffer_count++;
 };
 
 BufferAllocation::BufferAllocation(
@@ -68,10 +71,14 @@ BufferAllocation::BufferAllocation(
   obj_ = heap.newBuffer(info_, heap_offset);
   gpuAddress_ = info_.gpu_address;
   mappedMemory_ = info_.memory.get_accessible_or_null();
+  memstats::buffer_bytes += info_.length;
+  memstats::buffer_count++;
 }
 
 void
 BufferAllocation::free() {
+  memstats::buffer_bytes -= info_.length;
+  memstats::buffer_count--;
   if (placed_buffer) {
     wsi::aligned_free(placed_buffer);
     placed_buffer = nullptr;
