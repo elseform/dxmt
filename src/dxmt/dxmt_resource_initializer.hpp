@@ -28,6 +28,9 @@ namespace dxmt {
 constexpr size_t kResourceInitializerCpuCommandHeapSize = 0x100000; // 1MB
 constexpr size_t kResourceInitializerGpuUploadHeapSize = 0x2000000; // 32MB
 constexpr size_t kResourceInitializerGpuUploadHeapAlignment = 256;
+/* Texture data staged but not yet submitted. Past this, the batch is submitted
+   before more is staged, so a level load cannot stage every texture at once. */
+constexpr size_t kResourceInitializerMaxPendingUpload = 0x4000000; // 64MB
 constexpr size_t kResourceInitializerChunks = 2;
 
 static_assert(kResourceInitializerChunks > 1);
@@ -133,6 +136,8 @@ private:
     return false;
   }
 
+  void throttleUpload(size_t size);
+
   WMT::Buffer allocateGpuHeap(size_t size, size_t &offset);
 
   WMT::Buffer allocateZeroBuffer(size_t size);
@@ -146,6 +151,7 @@ private:
   WMT::Reference<WMT::SharedEvent> upload_queue_event_;
   WMT::Reference<WMT::Buffer> zero_buffer_;
   size_t zero_buffer_size_ = 0;
+  size_t pending_upload_bytes_ = 0;
   dxmt::mutex mutex_;
 
   void *cpu_command_heap;
