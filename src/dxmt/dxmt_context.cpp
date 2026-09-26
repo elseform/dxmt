@@ -23,6 +23,7 @@
 #include "dxmt_format.hpp"
 #include "dxmt_occlusion_query.hpp"
 #include "dxmt_presenter.hpp"
+#include "util_env.hpp"
 #include "wsi_platform.hpp"
 #include <cstdint>
 #include <cfloat>
@@ -40,6 +41,7 @@ ArgumentEncodingContext::ArgumentEncodingContext(CommandQueue &queue, WMT::Devic
     timestamp_state_(device),
     device_(device),
     queue_(queue) {
+  reorder_blits_ = env::getEnvVar("DXMT_REORDER_BLITS") == "1";
   dummy_sampler_info_.support_argument_buffers = true;
   dummy_sampler_info_.border_color = WMTSamplerBorderColorTransparentBlack;
   dummy_sampler_info_.compare_function = WMTCompareFunctionNever;
@@ -911,7 +913,24 @@ ArgumentEncodingContext::flushCommands(WMT::CommandBuffer cmdbuf, uint64_t seqId
   if (encoder_count > 1) {
     unsigned j, i;
     for (j = encoder_count - 2; j != ~0u; j--) {
-      // TODO(fences): we don't actively move encoders other than clear and render
+      // TODO(fences): we don't actively move encoders other than clear, render and (opt-in) blit
+      if (encoders[j]->type == EncoderType::Blit && reorder_blits_) {
+        /*
+        A blit encoder is only delayed into a later blit encoder. Dependencies
+        are only recorded as strong fences within kLane encoder ids, so the
+        scan stops before it could cross a dependency that only a weak
+        (generation) fence expresses.
+        */
+        for (i = j + 1; i < encoder_count; i++) {
+          if (encoders[i]->id - encoders[j]->id >= kLane)
+            break;
+          if (encoders[i]->type == EncoderType::Null)
+            continue;
+          if (checkEncoderRelation(encoders[j], encoders[i]) == DXMT_ENCODER_LIST_OP_SYNCHRONIZE)
+            break;
+        }
+        continue;
+      }
       if (encoders[j]->type != EncoderType::Clear && encoders[j]->type != EncoderType::Render)
         continue;
       for (i = j + 1; i < encoder_count; i++) {
@@ -1472,6 +1491,34 @@ ArgumentEncodingContext::checkEncoderRelation(EncoderData *former, EncoderData *
 
       return DXMT_ENCODER_LIST_OP_SYNCHRONIZE;
     }
+  }
+
+  if (former->type == EncoderType::Blit) {
+    if (hasDataDependency(latter, former))
+      return DXMT_ENCODER_LIST_OP_SYNCHRONIZE;
+    /*
+    Independent blit encoders: former's commands run first in latter, which
+    keeps their original order even though no hazard exists between them.
+    */
+    auto b1 = reinterpret_cast<BlitEncoderData *>(latter);
+    auto b0 = reinterpret_cast<BlitEncoderData *>(former);
+    if ((void *)b0->cmd_tail != &b0->cmd_head) {
+      if ((void *)b1->cmd_tail == &b1->cmd_head)
+        b1->cmd_tail = b0->cmd_tail;
+      b0->cmd_tail->next.set(b1->cmd_head.next.get());
+      b1->cmd_head.next.set(b0->cmd_head.next.get());
+      b0->cmd_head.next.set(nullptr);
+      b0->cmd_tail = (wmtcmd_base *)&b0->cmd_head;
+    }
+    b1->fence_update.merge(b0->fence_update);
+    b1->fence_wait.merge(b0->fence_wait);
+    b1->fence_wait.subtract(b0->fence_update);
+
+    currentFrameStatistics().blit_pass_optimized++;
+    b0->~BlitEncoderData();
+    b0->next = nullptr;
+    b0->type = EncoderType::Null;
+    return DXMT_ENCODER_LIST_OP_SYNCHRONIZE;
   }
 
   return hasDataDependency(latter, former) ? DXMT_ENCODER_LIST_OP_SYNCHRONIZE : DXMT_ENCODER_LIST_OP_SWAP;

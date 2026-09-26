@@ -48,6 +48,7 @@ struct FrameStatistics {
   uint32_t resolve_pass_optimized = 0;
   uint32_t compute_pass_count = 0;
   uint32_t blit_pass_count = 0;
+  uint32_t blit_pass_optimized = 0;
   uint32_t event_stall = 0;
   uint32_t latency = 0;
   clock::duration encode_prepare_interval{};
@@ -70,6 +71,7 @@ struct FrameStatistics {
     resolve_pass_optimized = 0;
     compute_pass_count = 0;
     blit_pass_count = 0;
+    blit_pass_optimized = 0;
     event_stall = 0;
     latency = 0;
     encode_prepare_interval = {};
