@@ -1,5 +1,6 @@
 #include "dxmt_dynamic.hpp"
 #include "dxmt_texture.hpp"
+#include "dxmt_memstats.hpp"
 
 namespace dxmt {
 DynamicBuffer::DynamicBuffer(Buffer *buffer, Flags<BufferAllocationFlag> flags) :
@@ -14,8 +15,11 @@ DynamicBuffer::incRef() {
 
 void
 DynamicBuffer::decRef() {
-  if (refcount_.fetch_sub(1u, std::memory_order_release) == 1u)
+  if (refcount_.fetch_sub(1u, std::memory_order_release) == 1u) {
+    memstats::idle_rename_bytes -= int64_t(fifo.size() * buffer->length());
+    memstats::idle_rename_count -= int64_t(fifo.size());
     delete this;
+  }
 };
 
 Rc<BufferAllocation>
@@ -32,6 +36,8 @@ DynamicBuffer::allocate(uint64_t coherent_seq_id) {
     }
     ret = std::move(entry.allocation);
     fifo.pop();
+    memstats::idle_rename_bytes -= buffer->length();
+    memstats::idle_rename_count--;
     break;
   }
   if (!ret.ptr())
@@ -42,8 +48,11 @@ DynamicBuffer::allocate(uint64_t coherent_seq_id) {
 void
 DynamicBuffer::updateImmediateName(uint64_t current_seq_id, Rc<BufferAllocation> &&allocation, uint32_t suballocation, bool owned_by_command_list) {
   std::lock_guard<dxmt::mutex> lock(mutex_);
-  if (!owned_by_command_list_)
+  if (!owned_by_command_list_) {
     fifo.push(QueueEntry{.allocation = std::move(name_), .will_free_at = current_seq_id});
+    memstats::idle_rename_bytes += buffer->length();
+    memstats::idle_rename_count++;
+  }
   name_ = std::move(allocation);
   name_suballocation_ = suballocation;
   owned_by_command_list_ = owned_by_command_list;
@@ -60,6 +69,8 @@ DynamicBuffer::recycle(uint64_t current_seq_id, Rc<BufferAllocation> &&allocatio
     }
   }
   fifo.push(QueueEntry{.allocation = std::move(allocation), .will_free_at = current_seq_id});
+  memstats::idle_rename_bytes += buffer->length();
+  memstats::idle_rename_count++;
 }
 
 uint32_t

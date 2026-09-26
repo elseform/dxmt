@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Metal.hpp"
+#include "dxmt_memstats.hpp"
 #include "log/log.hpp"
 #include "thread.hpp"
 #include "util_math.hpp"
@@ -97,8 +98,13 @@ public:
     // true only for the externally malloc'd + newBufferWithBytesNoCopy path;
     // the Metal-owned newBufferWithLength/contents path must not be freed here.
     bool owns_mapped_address = false;
+    size_t counted_bytes = 0;
 
     ~Block() {
+      if (counted_bytes) {
+        memstats::staging_block_bytes -= counted_bytes;
+        memstats::staging_block_count--;
+      }
       if (owns_mapped_address && mapped_address) {
         free(mapped_address);
         mapped_address = nullptr;
@@ -113,8 +119,10 @@ public:
       gpu_address = move.gpu_address;
       mapped_address = move.mapped_address;
       owns_mapped_address = move.owns_mapped_address;
+      counted_bytes = move.counted_bytes;
       move.mapped_address = nullptr;
       move.owns_mapped_address = false;
+      move.counted_bytes = 0;
     };
   };
 
@@ -133,6 +141,9 @@ public:
     }
     block.buffer = device_.newBuffer(info);
     block.gpu_address = info.gpu_address;
+    block.counted_bytes = block_size;
+    memstats::staging_block_bytes += block_size;
+    memstats::staging_block_count++;
     if (!placed_buffer_) {
       // Metal-owned storage: the device wrote the mapped `contents` pointer
       // back into `info.memory` (WMTResourceStorageModeShared/Managed) or
