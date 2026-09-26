@@ -24,10 +24,8 @@ shippable payload from this fork:
 The `release` branch is what actually ships; tags on it (e.g. `0.80-gamma`)
 mark the exact commit a published `gamma-wine-engine` build was compiled
 from — `git describe --always` embeds the tag name into `DXMT_VERSION`, shown
-in-game by Apple's Metal performance HUD. Other branches
-(`vsync-updates`, `dlssperf-pass2-notexview`, `pagefault-pass1-psoguard`,
-`release-on-upstream`) are in-progress work; only `release` is meant to be
-built from.
+in-game by Apple's Metal performance HUD. Other branches are in-progress
+work or experiments; only `release` is meant to be built from.
 
 ### Fixes on top of upstream
 
@@ -91,5 +89,5 @@ In commit order:
   `r__no_ram_textures on`.
 
 Everything else in `release`'s history versus upstream is the rebase carrying
-these same fixes forward onto newer upstream commits (`vsync-updates` was
-rebuilt on top of `3Shain/dxmt` `7c8dee1`), not new work.
+these same fixes forward onto newer upstream commits (the fixes were rebased
+onto `3Shain/dxmt` `7c8dee1`), not new work.
