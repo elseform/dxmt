@@ -1,33 +1,13 @@
 # DXMT
 
-A Metal-based translation layer for Direct3D 11 and 10 which allows running 3D applications on macOS using Wine.
-
-For the current status of the project, please refer to the [project wiki](https://github.com/3Shain/dxmt/wiki).
-
-The most recent development builds can be found [here](https://github.com/3Shain/dxmt/actions).
-
+A Metal-based translation layer which allows running 3D applications on macOS using Wine.
+This fork focuses on achieving best possible performance for GAMMA on SSS24
 
 ## Build
 
 See [DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
-## This fork
-
-`elseform/dxmt` is a maintained fork of the above, built and shipped as the
-Direct3D 11 backend for [GAMMA Setup Tool](https://github.com/elseform/gamma-setup-tool)
-and [gamma-wine-engine](https://github.com/elseform/gamma-wine-engine), which
-wrap S.T.A.L.K.E.R. Anomaly / G.A.M.M.A. for macOS. Build instructions for a
-shippable payload from this fork:
-[gamma-project's DXMT build procedure](https://github.com/elseform/gamma-project)
-(private; ask if you need it mirrored here).
-
-The `release` branch is what actually ships; tags on it (e.g. `0.80-gamma`)
-mark the exact commit a published `gamma-wine-engine` build was compiled
-from — `git describe --always` embeds the tag name into `DXMT_VERSION`, shown
-in-game by Apple's Metal performance HUD. Other branches are in-progress
-work or experiments; only `release` is meant to be built from.
-
-### Fixes on top of upstream
+### Fixes introduced
 
 In commit order:
 
