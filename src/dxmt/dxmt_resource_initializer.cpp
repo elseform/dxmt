@@ -274,6 +274,7 @@ ResourceInitializer::initWithData(
   size_t total_bytes_needed = bytes_per_image_needed * depth_sub;
 
   std::lock_guard<dxmt::mutex> lock(mutex_);
+  throttleUpload(total_bytes_needed);
   do {
     RETAIN(allocation);
     ALLOC_BLIT(wmtcmd_blit_copy_from_buffer_to_texture, copy);
@@ -416,6 +417,7 @@ ResourceInitializer::flushToWait() {
 void
 ResourceInitializer::reset() {
   cpu_command_heap_offset = 0;
+  pending_upload_bytes_ = 0;
 
   clear_render_pass_head.next = nullptr;
   clear_render_pass_tail = &clear_render_pass_head;
@@ -442,6 +444,23 @@ ResourceInitializer::encode(WMT::CommandBuffer cmdbuf) {
     b.encodeCommands(&blit_cmd_head);
     b.endEncoding();
   }
+}
+
+void
+ResourceInitializer::throttleUpload(size_t size) {
+  if (pending_upload_bytes_ && pending_upload_bytes_ + size > kResourceInitializerMaxPendingUpload) {
+    auto seq_id = flushInternal();
+    /* Heap blocks are reused only once their batch is known to be finished.
+       Wait for the batch before this one, so the next allocations find free
+       blocks instead of growing the heap by everything a level load uploads
+       (the blocks then outlive the load, each expiring only after hundreds of
+       flushes). */
+    if (seq_id > 1) {
+      upload_queue_event_.waitUntilSignaledValue(seq_id - 1, -1);
+      cached_coherent_seq_id = upload_queue_event_.signaledValue();
+    }
+  }
+  pending_upload_bytes_ += size;
 }
 
 WMT::Buffer
