@@ -34,11 +34,14 @@ built from.
 In commit order:
 
 - **Winemetal resource lifetime/argument-buffer hardening**
-  (`059cd88`). Tracks Metal hazard mode for D3D11 resource allocations and
-  moves the winemetal argument-buffer allocator to a Metal-owned allocation,
-  closing a use-after-free/aliasing window implicated in a mid-gameplay GPU
-  page fault. One of several changes aimed at that fault; see
-  "DynamicBuffer suballocation" and "PSO-failure skip-draw guard" below.
+  (`059cd88`). Takes each binding's GPU resource ID, exact native Metal
+  resource and owning allocation from one snapshot, retains every native
+  resource a command buffer uses until that command buffer completes, and
+  moves the argument-buffer allocator from `malloc`'d memory to Metal-owned
+  storage, closing a use-after-free/aliasing window implicated in a
+  mid-gameplay GPU page fault. Hazard tracking stays untracked. One of
+  several changes aimed at that fault; see "DynamicBuffer suballocation" and
+  "PSO-failure skip-draw guard" below.
 - **DynamicBuffer suballocation from one page regardless of Usage**
   (`3004e88`). `Map`/`Discard` renames of a `D3D11_USAGE_DYNAMIC` buffer now
   suballocate from a single page unconditionally, instead of only for some
