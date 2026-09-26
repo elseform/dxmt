@@ -304,7 +304,11 @@ public:
       statistics.at(frame_count).present_latency_interval += (t1 - t0);
     }
     statistics.at(frame_count).latency = max_latency_;
+    LogMemoryStats();
   }
+
+  /* DXMT_MEMORY_STATS=1: every 5 s, log Metal-allocated bytes next to DXMT's buffer and rename-pool bytes. */
+  void LogMemoryStats();
 
   uint32_t GetMaxLatency() { return max_latency_; }
 

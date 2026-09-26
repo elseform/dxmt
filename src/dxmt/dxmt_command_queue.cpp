@@ -20,6 +20,7 @@
 #include "dxmt_command_queue.hpp"
 #include "Metal.hpp"
 #include "dxmt_statistics.hpp"
+#include "dxmt_memstats.hpp"
 #include "util_env.hpp"
 #include "util_win32_compat.h"
 #include <atomic>
@@ -223,6 +224,23 @@ CommandQueue::WaitForFinishThread() {
   }
   TRACE("finishing thread gracefully terminates");
   return 0;
+}
+
+void
+CommandQueue::LogMemoryStats() {
+  static const bool enabled = env::getEnvVar("DXMT_MEMORY_STATS") == "1";
+  if (!enabled)
+    return;
+  static clock::time_point last{};
+  auto now = clock::now();
+  if (now - last < std::chrono::seconds(5))
+    return;
+  last = now;
+  WARN(
+      "Memory: Metal allocated ", device.currentAllocatedSize() >> 20, " MB; buffer allocations ",
+      memstats::buffer_count.load(), " / ", memstats::buffer_bytes.load() >> 20, " MB; idle rename copies ",
+      memstats::idle_rename_count.load(), " / ", memstats::idle_rename_bytes.load() >> 20, " MB"
+  );
 }
 
 void CommandQueue::Retain(uint64_t seq, Allocation* allocation) {
