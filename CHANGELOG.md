@@ -7,10 +7,14 @@ is in the README, "Fixes introduced".
 
 ## gamma-2026.09.27.1 (2026-09-27)
 
-Same code as `gamma-2026.09.27`, built for macOS 26
+The code of `gamma-2026.09.27` with a shorter HUD line, built for macOS 26
 (`MACOSX_DEPLOYMENT_TARGET=26.0`) instead of 15: GAMMA's minimum is now
 macOS 26 on Apple Silicon. `winemetal.so` declares macOS 26 and the Metal
 command shaders in `d3d11.dll` and `d3d12.dll` target `macosx26.0`.
+
+The Metal HUD line is now just the feature level and the release tag (e.g.
+`FL_11_1 gamma-2026.09.27.1`). The `DXMT D3D11` prefix made it long enough for
+the macOS 26+ HUD to cut off the end of the tag.
 
 ## gamma-2026.09.27 (2026-09-27)
 

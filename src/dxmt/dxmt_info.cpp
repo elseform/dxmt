@@ -4,7 +4,7 @@
 namespace dxmt {
 
 std::string
-GetVersionDescriptionText(uint32_t ApiVersion, uint32_t FeatureLevel) {
+GetVersionDescriptionText([[maybe_unused]] uint32_t ApiVersion, uint32_t FeatureLevel) {
   std::string feature_level_text = "UNKNOWN";
   switch (FeatureLevel) {
   case 0x9100:
@@ -35,7 +35,9 @@ GetVersionDescriptionText(uint32_t ApiVersion, uint32_t FeatureLevel) {
     feature_level_text = "12_1";
     break;
   }
-  return str::format("DXMT D3D", ApiVersion, " FL_", feature_level_text, " ", DXMT_VERSION);
+  // The Metal HUD shows this line; macOS 26+ cuts long metric values, so keep it to the
+  // feature level and the release tag.
+  return str::format("FL_", feature_level_text, " ", DXMT_VERSION);
 }
 
 } // namespace dxmt
