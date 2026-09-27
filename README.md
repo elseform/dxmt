@@ -68,6 +68,16 @@ In commit order:
   5 s the log shows the Metal device's allocated size next to DXMT's own
   buffer allocations, parked rename copies and staging ring blocks. A
   diagnostic; at the default log level it costs one comparison per frame.
+- **Frame limiter, opt-in** (`c41cb78`). With `DXMT_FRAME_LIMITER=1`, the
+  game's own thread is paced after each `Present` to a steady interval
+  (`d3d11.frameLimit`, else `d3d11.preferredMaxFrameRate`, else half the
+  display refresh rate), and presents are held to the same interval, so game
+  timing, input and the display share one cadence. After falling a whole
+  interval behind it resynchronizes instead of catching up.
+  `DXMT_DISPLAY_SYNC_OFF=1` presents without display sync.
+- **Per-frame stats log** (`c41cb78`). With `DXMT_STATS_LOG=<dir>`, one CSV
+  row per presented frame: frame interval, latency and limiter waits, commit
+  and sync waits, encode times, drawable wait, GPU time and pass counts.
 
 Everything else in `release`'s history versus upstream is the rebase carrying
 these same fixes forward onto newer upstream commits (the fixes were rebased
