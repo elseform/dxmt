@@ -1,14 +1,20 @@
 # Changelog
 
 Changes to the `release` branch of `elseform/dxmt`, newest first. Releases
-are tagged `gamma-YYYY.MM.DD`. The full list of fixes this fork carries over
-upstream `3Shain/dxmt` is in the README, "Fixes introduced".
+are tagged `gamma-YYYY.MM.DD`, with a `.N` suffix for a further release on the
+same day. The full list of fixes this fork carries over upstream `3Shain/dxmt`
+is in the README, "Fixes introduced".
+
+## gamma-2026.09.27.1 (2026-09-27)
+
+Same code as `gamma-2026.09.27`, built for macOS 26
+(`MACOSX_DEPLOYMENT_TARGET=26.0`) instead of 15. `winemetal.so` declares macOS 26 and the Metal
+command shaders in `d3d11.dll` and `d3d12.dll` target `macosx26.0`.
 
 ## gamma-2026.09.27 (2026-09-27)
 
 Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 (`v0.80` plus 244 upstream commits).
-
 
 ### Fixed
 
