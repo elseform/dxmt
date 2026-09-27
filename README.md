@@ -46,8 +46,6 @@ In commit order:
   hardcoded off, and stops `changeDisplaySync()` from pushing layer
   properties to the Metal layer while a pixel-format/size/sample-count/
   color-space change from `changeLayerProperties()` is still deferred.
-  Runtime-verified: toggling v-sync in game and changing resolution both
-  behave correctly.
 - **Blit encoder merging, opt-in** (`05ba201`). With `DXMT_REORDER_BLITS=1`,
   a blit encoder is moved past independent encoders into the next blit encoder,
   so fewer encoders and render passes are split per frame. Off by default.
@@ -60,13 +58,12 @@ In commit order:
   are joined before the shader and pipeline tasks they run are freed, fixing a
   startup crash (`unrecognized selector ... 0xf` in
   `newComputePipelineStateWithDescriptor`) when the first D3D11 device is
-  released. Runtime-verified.
+  released.
 - **Resource-initializer upload cap** (`c73e813`). Textures created with
   initial data are submitted in batches of at most 64 MB, waiting for the
   previous batch, instead of staging a whole level load in the upload heap,
   which grew to gigabytes, kept them for the rest of the session, and ended in
-  a GPU timeout on the first frame. Runtime-verified with X-Ray's
-  `r__no_ram_textures on`.
+  a GPU timeout on the first frame (X-Ray with `r__no_ram_textures on`).
 - **Memory accounting log** (`05cfcf7`). With `DXMT_LOG_LEVEL=debug`, every
   5 s the log shows the Metal device's allocated size next to DXMT's own
   buffer allocations, parked rename copies and staging ring blocks. A
