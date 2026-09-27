@@ -800,7 +800,6 @@ public:
     if (PresentFlags & DXGI_PRESENT_TEST)
       return hr;
 
-    pollPerfHotkeys();
 
     if (should_exit_fs)
       SetFullscreenState(FALSE, nullptr);
