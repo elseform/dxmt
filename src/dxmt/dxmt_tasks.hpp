@@ -56,7 +56,12 @@ template <typename Task> task_scheduler<Task>::task_scheduler() {
 }
 
 template <typename Task> task_scheduler<Task>::~task_scheduler() {
-  destroyed.store(true);
+  {
+    // Set under the workers' mutex so a worker between its wait predicate and
+    // the sleep cannot miss the notification and leave join() waiting forever.
+    std::unique_lock<dxmt::mutex> lock(worker_mutex_);
+    destroyed.store(true);
+  }
   worker_cond_.notify_all();
 
   for (auto &worker : workers_) {
