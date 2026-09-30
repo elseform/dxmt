@@ -2,7 +2,7 @@
 
 Changes to the `release` branch of `elseform/dxmt`, newest first. Releases
 are tagged `anomaly-YYYY.MM.DD`, with a `.N` suffix for a further release on
-the same day. Releases up to `gamma-2026.09.30` were tagged with the `gamma-`
+the same day. Releases up to `gamma-2026.09.27.1` were tagged with the `gamma-`
 prefix before the rebrand to Anomaly; those tags and their entries below keep
 their original names. The full list of fixes this fork carries over upstream
 `3Shain/dxmt` is in the README, "Fixes introduced".
@@ -16,13 +16,7 @@ Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 
 - **Release name.** Releases are now tagged `anomaly-YYYY.MM.DD` instead of
   `gamma-YYYY.MM.DD`, following the rebrand of GAMMA's supporting tools to
-  Anomaly. The Metal HUD version line shows the new tag. The code is identical
-  to `gamma-2026.09.30`; only the tag and the README's stated target changed.
-
-## gamma-2026.09.30 (2026-09-30)
-
-Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
-(`v0.80` plus 244 upstream commits).
+  Anomaly. The Metal HUD version line shows the new tag.
 
 ### Fixed
 
@@ -78,7 +72,7 @@ Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 - **Compile worker shutdown order.** The shader compile worker threads could
   still be running when the tasks they worked on were freed as a device was
   released. They are now stopped first. This was listed as the fix for the
-  startup crash; it was not, and that crash is fixed in gamma-2026.09.30.
+  startup crash; it was not, and that crash is fixed in anomaly-2026.09.30.
   (`c3a5d2c`)
 - **Memory growth and GPU timeout while loading textures created with their
   data.** Textures created with initial data (in GAMMA, with
