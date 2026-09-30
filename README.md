@@ -1,7 +1,7 @@
 # DXMT
 
 A Metal-based translation layer which allows running 3D applications on macOS using Wine.
-This fork focuses on achieving best possible performance for GAMMA on SSS24
+This fork focuses on achieving best possible performance for Anomaly on SSS24
 
 ## Build
 
