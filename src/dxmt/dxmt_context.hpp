@@ -858,6 +858,13 @@ public:
   uint32_t tess_num_output_control_point_element;
   uint32_t tess_threads_per_patch;
 
+private:
+  /* Declared before the command contexts below on purpose: their constructors
+     build compute pipelines through ctx.device_, so it must be initialized
+     first. */
+  WMT::Device device_;
+
+public:
   InternalCommandLibrary &lib;
   EmulatedCommandContext emulated_cmd;
   ClearRTV<ArgumentEncodingContext> clear_rt_cmd;
@@ -947,7 +954,6 @@ private:
 
   uint64_t intrapass_barrier_control_bits_ = 0;
 
-  WMT::Device device_;
   CommandQueue& queue_;
 };
 
