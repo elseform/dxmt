@@ -48,10 +48,17 @@ In commit order:
   (`d3d11.releaseShaderIR`, default on). Ported from NerRobDog/dxmt. Also frees
   a shader's argument-info buffer, which was leaked.
 - **Pipeline cache teardown order**. The compile worker threads
-  are joined before the shader and pipeline tasks they run are freed, fixing a
-  startup crash (`unrecognized selector ... 0xf` in
-  `newComputePipelineStateWithDescriptor`) when the first D3D11 device is
-  released.
+  are joined before the shader and pipeline tasks they run are freed when a
+  device is released.
+- **Startup crash: uninitialized device handle**. The command
+  queue's clear pipelines were built through a Metal device handle that was
+  still uninitialized, because its member was declared after the objects that
+  use it. The game aborted at startup with `unrecognized selector ... 0xf`
+  (or another stray value) in `newComputePipelineStateWithDescriptor`. The
+  handle is now initialized first.
+- **Scheduler shutdown wake-up**. The compile scheduler sets its
+  shutdown flag under the workers' mutex, so a worker cannot miss the signal
+  and leave a device release waiting for it forever.
 - **Resource-initializer upload cap**. Textures created with
   initial data are submitted in batches of at most 64 MB, waiting for the
   previous batch, instead of staging a whole level load in the upload heap,
