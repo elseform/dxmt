@@ -5,6 +5,27 @@ are tagged `gamma-YYYY.MM.DD`, with a `.N` suffix for a further release on the
 same day. The full list of fixes this fork carries over upstream `3Shain/dxmt`
 is in the README, "Fixes introduced".
 
+## gamma-2026.09.30 (2026-09-30)
+
+Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
+(`v0.80` plus 244 upstream commits).
+
+### Fixed
+
+- **Startup crash.** The game could abort during startup, while it created its
+  first Direct3D 11 device, with `unrecognized selector sent to instance ...`
+  in `newComputePipelineStateWithDescriptor`; the receiver was `0xf`, `0x6d`
+  or a fragment of asset-path text. The command queue builds its clear
+  pipelines through a Metal device handle, but the member holding that handle
+  was declared after the objects that use it and so was still uninitialized
+  when they ran. Depending on what the new memory held, the pipelines were
+  silently missing or the call went to a garbage handle. The handle is now
+  initialized first. This is the actual cause of the crash listed under
+  gamma-2026.09.27; the change listed there did not fix it. (`35c6ed4`)
+- **Possible hang when a device is released.** The pipeline compile worker
+  threads could miss their shutdown signal and leave the device release
+  waiting for them forever. (`4660ac1`)
+
 ## gamma-2026.09.27.1 (2026-09-27)
 
 Built for macOS 26 (`MACOSX_DEPLOYMENT_TARGET=26.0`) instead of 15: GAMMA's
@@ -40,12 +61,11 @@ Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 
 ### Fixed
 
-- **Startup crash.** The game could crash during startup with
-  `unrecognized selector sent to instance 0xf` in
-  `newComputePipelineStateWithDescriptor` when it released its first
-  Direct3D 11 device; clicking the splash screen repeatedly sometimes got past
-  it. The shader compile worker threads were still running when the tasks they
-  worked on were freed. They are now stopped first. (`c3a5d2c`)
+- **Compile worker shutdown order.** The shader compile worker threads could
+  still be running when the tasks they worked on were freed as a device was
+  released. They are now stopped first. This was listed as the fix for the
+  startup crash; it was not, and that crash is fixed in gamma-2026.09.30.
+  (`c3a5d2c`)
 - **Memory growth and GPU timeout while loading textures created with their
   data.** Textures created with initial data (in GAMMA, with
   `r__no_ram_textures on`) were staged for upload all at once: the staging
