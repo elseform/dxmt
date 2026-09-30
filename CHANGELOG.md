@@ -1,9 +1,11 @@
 # Changelog
 
 Changes to the `release` branch of `elseform/dxmt`, newest first. Releases
-are tagged `gamma-YYYY.MM.DD`, with a `.N` suffix for a further release on the
-same day. The full list of fixes this fork carries over upstream `3Shain/dxmt`
-is in the README, "Fixes introduced".
+are tagged `anomaly-YYYY.MM.DD`, with a `.N` suffix for a further release on
+the same day. Releases up to `gamma-2026.09.30` were tagged with the `gamma-`
+prefix before the rebrand to Anomaly; those tags and their entries below keep
+their original names. The full list of fixes this fork carries over upstream
+`3Shain/dxmt` is in the README, "Fixes introduced".
 
 ## gamma-2026.09.30 (2026-09-30)
 
