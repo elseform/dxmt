@@ -7,6 +7,18 @@ prefix before the rebrand to Anomaly; those tags and their entries below keep
 their original names. The full list of fixes this fork carries over upstream
 `3Shain/dxmt` is in the README, "Fixes introduced".
 
+## anomaly-2026.09.30 (2026-09-30)
+
+Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
+(`v0.80` plus 244 upstream commits).
+
+### Changed
+
+- **Release name.** Releases are now tagged `anomaly-YYYY.MM.DD` instead of
+  `gamma-YYYY.MM.DD`, following the rebrand of GAMMA's supporting tools to
+  Anomaly. The Metal HUD version line shows the new tag. The code is identical
+  to `gamma-2026.09.30`; only the tag and the README's stated target changed.
+
 ## gamma-2026.09.30 (2026-09-30)
 
 Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
