@@ -5517,7 +5517,8 @@ public:
 
       if (scaler_info.motion_vector_highres) {
         enc.mv_scale_cmd.dispatch(
-            motion_vector, mv_view, mv_downscaled, 0, props.motion_vector_scale_x, props.motion_vector_scale_y
+            motion_vector, mv_view, mv_downscaled, mv_downscaled->fullView, props.motion_vector_scale_x,
+            props.motion_vector_scale_y
         );
         WMTFXTemporalScalerProps new_props = props;
         new_props.motion_vector_scale_x = 1.0;
