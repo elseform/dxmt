@@ -2,6 +2,7 @@
 
 #ifndef _WIN32
 
+#include <atomic>
 #include <windows.h>
 
 #include <sched.h>
@@ -70,24 +71,52 @@ inline DWORD MAKELONG(WORD a, WORD b) {
 
 typedef SECURITY_ATTRIBUTES *LPSECURITY_ATTRIBUTES;
 
+// A counting semaphore as a plain object: the swapchain only counts present slots with it
+// (the frame-latency waitable object is not exposed natively, so nothing waits on it).
+struct NativeSemaphore {
+  static constexpr uint32_t kMagic = 0x53454d41; // "SEMA"
+  uint32_t magic = kMagic;
+  std::atomic<LONG> count;
+  LONG maximum;
+};
+
 inline HANDLE CreateSemaphore(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes,
                               LONG                  lInitialCount,
                               LONG                  lMaximumCount,
                               LPCSTR                lpName) {
-  dxmt::Logger::warn("CreateSemaphore not implemented.");
-  return nullptr;
+  auto *semaphore = new NativeSemaphore();
+  semaphore->count = lInitialCount;
+  semaphore->maximum = lMaximumCount;
+  return (HANDLE)semaphore;
 }
 
 inline BOOL ReleaseSemaphore(HANDLE hSemaphore,
                              LONG   lReleaseCount,
                              LPLONG lpPreviousCount) {
-  dxmt::Logger::warn("ReleaseSemaphore not implemented.");
-  return FALSE;
+  auto *semaphore = (NativeSemaphore *)hSemaphore;
+  if (!semaphore || semaphore->magic != NativeSemaphore::kMagic)
+    return FALSE;
+  LONG previous = semaphore->count.load();
+  LONG next;
+  do {
+    next = previous + lReleaseCount;
+    if (next > semaphore->maximum)
+      return FALSE;
+  } while (!semaphore->count.compare_exchange_weak(previous, next));
+  if (lpPreviousCount)
+    *lpPreviousCount = previous;
+  return TRUE;
 }
 
 inline BOOL CloseHandle(HANDLE hObject) {
-  dxmt::Logger::warn("CloseHandle not implemented.");
-  return FALSE;
+  auto *semaphore = (NativeSemaphore *)hObject;
+  if (!semaphore || semaphore->magic != NativeSemaphore::kMagic) {
+    dxmt::Logger::warn("CloseHandle: not a handle this layer created.");
+    return FALSE;
+  }
+  semaphore->magic = 0;
+  delete semaphore;
+  return TRUE;
 }
 
 inline BOOL DuplicateHandle(HANDLE   hSourceProcessHandle,

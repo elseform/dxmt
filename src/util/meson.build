@@ -26,8 +26,8 @@ util_src = files([
 
 if not dxmt_crossbuild
   util_src += files([
-    'wsi_monitor_headless.cpp',
-    'wsi_window_headless.cpp',
+    'wsi_monitor_native.cpp',
+    'wsi_window_native.cpp',
     'wsi_platform_darwin.cpp',
   ])
 else
@@ -39,7 +39,7 @@ else
 endif
 
 util_lib = static_library('util', util_src,
-  include_directories : [ dxmt_include_path ],
+  include_directories : [ dxmt_include_path, include_directories('../winemetal') ],
 )
 
 util_dep = declare_dependency(
