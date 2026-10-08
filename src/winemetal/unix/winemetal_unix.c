@@ -1681,6 +1681,58 @@ struct macdrv_functions_t {
   void (*on_main_thread)(dispatch_block_t b);
 };
 
+#ifdef DXMT_NATIVE
+
+/*
+ * Native (non-Wine) build: the "HWND" handed to the swapchain is an NSView*
+ * owned by the host application. A layer-hosting child view carrying a
+ * CAMetalLayer is attached to it and sized with it; the host keeps ownership
+ * of its own view hierarchy.
+ */
+static NTSTATUS
+_CreateMetalViewFromHWND(void *obj) {
+  struct unixcall_create_metal_view_from_hwnd *params = obj;
+  NSView *host = (NSView *)params->hwnd;
+  id<MTLDevice> device = (id<MTLDevice>)params->device;
+  __block NSView *view = nil;
+  __block CAMetalLayer *layer = nil;
+
+  if (!host)
+    return STATUS_SUCCESS;
+
+  execute_on_main(^{
+    layer = [CAMetalLayer layer];
+    layer.device = device;
+    if (host.window)
+      layer.contentsScale = host.window.backingScaleFactor;
+
+    view = [[NSView alloc] initWithFrame:host.bounds];
+    view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    view.layer = layer;
+    view.wantsLayer = YES;
+    [host addSubview:view];
+  });
+
+  params->ret_view = (obj_handle_t)view;
+  params->ret_layer = (obj_handle_t)layer;
+  return STATUS_SUCCESS;
+}
+
+static NTSTATUS
+_ReleaseMetalView(void *obj) {
+  struct unixcall_generic_obj_noret *params = obj;
+  NSView *view = (NSView *)params->handle;
+
+  execute_on_main(^{
+    [view removeFromSuperview];
+    [view release];
+  });
+
+  return STATUS_SUCCESS;
+}
+
+#else
+
 static NTSTATUS
 _CreateMetalViewFromHWND(void *obj) {
   struct unixcall_create_metal_view_from_hwnd *params = obj;
@@ -1736,6 +1788,8 @@ _ReleaseMetalView(void *obj) {
 
   return STATUS_SUCCESS;
 }
+
+#endif /* DXMT_NATIVE */
 
 static NTSTATUS
 thunk_SM50Initialize(void *args) {
