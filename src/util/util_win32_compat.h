@@ -4,6 +4,9 @@
 
 #include <windows.h>
 
+#include <sched.h>
+#include <unistd.h>
+
 #include "log/log.hpp"
 
 #define THREAD_PRIORITY_TIME_CRITICAL 15
@@ -99,6 +102,14 @@ inline BOOL DuplicateHandle(HANDLE   hSourceProcessHandle,
   return FALSE;
 }
 
+
+inline VOID Sleep(DWORD dwMilliseconds) {
+  usleep(useconds_t(dwMilliseconds) * 1000);
+}
+
+inline BOOL SwitchToThread() {
+  return sched_yield() == 0;
+}
 
 #define ARRAYSIZE(a) (sizeof(a)/sizeof(*(a)))
 
