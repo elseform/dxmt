@@ -268,6 +268,10 @@ IREffect init_input_reg_with_interpolation(
   air::Interpolation interpolation, uint32_t sampleidx_at
 );
 
+IREffect init_default_input_reg(
+  uint32_t to_reg, uint32_t mask, RegisterComponentType type
+);
+
 std::function<IRValue(pvalue)>
 pop_output_reg(uint32_t from_reg, uint32_t mask, uint32_t to_element);
 

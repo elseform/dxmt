@@ -135,14 +135,19 @@ void handle_signature_vs(
         [=, type = (InputAttributeComponentType)sig.componentType(),
          name = sig.consistentAttributeName()](SignatureContext &ctx) {
           if (ctx.ia_layout) {
+            bool found = false;
             for (unsigned i = 0; i < ctx.ia_layout->num_elements; i++) {
               if (ctx.ia_layout->elements[i].reg == reg) {
                 ctx.prologue << pull_vertex_input(
                   ctx.func_signature, reg, mask, ctx.ia_layout->elements[i],
                   ctx.ia_layout->slot_mask
                 );
+                found = true;
                 break;
               }
+            }
+            if (!found) {
+              ctx.prologue << init_default_input_reg(reg, mask, sig.componentType());
             }
           } else {
             auto assigned_index = ctx.func_signature.DefineInput(

@@ -81,6 +81,7 @@ read_control_flow(
 
   BasicBlock *bb_current;
   uint32_t phase = ~0u;
+  uint32_t next_loop_id = 0;
   std::stack<BasicBlock *> bb_endif;
   std::stack<BasicBlock *> bb_continue_target;
   std::stack<BasicBlock *> bb_break_target;
@@ -132,13 +133,18 @@ read_control_flow(
     }
 
     case D3D10_SB_OPCODE_LOOP: {
+      uint32_t loop_id = next_loop_id++;
+      auto loop_init = fresh_bb("loop_init");
       auto loop_entrance = fresh_bb("loop_entrance");
+      auto loop_body = fresh_bb("loop_body");
       auto end_loop = fresh_bb("end_loop");
       bb_continue_target.push(loop_entrance);
       bb_break_target.push(end_loop);
 
-      bb_current->target = BasicBlockUnconditionalBranch{loop_entrance};
-      bb_current = loop_entrance;
+      bb_current->target = BasicBlockUnconditionalBranch{loop_init};
+      loop_init->target = BasicBlockLoopInit{loop_entrance, loop_id};
+      loop_entrance->target = BasicBlockLoopHeader{loop_body, end_loop, loop_id, 512};
+      bb_current = loop_body;
       break;
     }
     case D3D10_SB_OPCODE_ENDLOOP: {
@@ -704,6 +710,12 @@ read_control_flow(
                 },
                 [&](BasicBlockUnconditionalBranch uncond) -> BasicBlockTarget {
                   return BasicBlockUnconditionalBranch{clone(uncond.target)};
+                },
+                [&](BasicBlockLoopInit loop_init) -> BasicBlockTarget {
+                  return BasicBlockLoopInit{clone(loop_init.entrance), loop_init.loop_id};
+                },
+                [&](BasicBlockLoopHeader loop_hdr) -> BasicBlockTarget {
+                  return BasicBlockLoopHeader{clone(loop_hdr.body), clone(loop_hdr.exit), loop_hdr.loop_id, loop_hdr.max_iterations};
                 },
                 [&](BasicBlockConditionalBranch cond) -> BasicBlockTarget {
                   return BasicBlockConditionalBranch{cond.cond, clone(cond.true_branch), clone(cond.false_branch)};

@@ -97,6 +97,7 @@ struct MTL_POST_TESSELLATOR_REFLECTION {
 struct MTL_PIXEL_SHADER_REFLECTION {
   uint32_t ValidRenderTargets;
   uint32_t HasCoverageOutput;
+  uint32_t InputRegisterMask;
 };
 
 struct MTL_SHADER_REFLECTION {
@@ -123,6 +124,7 @@ struct MTL_SHADER_REFLECTION {
   uint32_t NumOutputElement;
   uint32_t ThreadsPerPatch;
   uint32_t ArgumentTableQwords;
+  uint32_t OutputRegisterMask;
 };
 
 #if defined(__LP64__) || defined(_WIN64)
@@ -204,12 +206,19 @@ enum SM50_SHADER_COMPILATION_ARGUMENT_TYPE {
   SM50_SHADER_PSO_TESSELLATOR = 7,
   SM50_SHADER_ROOT_SIGNATURE = 8,
   SM50_SHADER_ROOT_SIGNATURE2 = 9,
+  SM50_SHADER_OUTPUT_PAD = 10,
   SM50_SHADER_ARGUMENT_TYPE_MAX = 0xffffffff,
 };
 
 struct SM50_SHADER_COMPILATION_ARGUMENT_DATA {
   void *next;
   enum SM50_SHADER_COMPILATION_ARGUMENT_TYPE type;
+};
+
+struct SM50_SHADER_OUTPUT_PAD_DATA {
+  void *next;
+  enum SM50_SHADER_COMPILATION_ARGUMENT_TYPE type;
+  uint32_t mask;
 };
 
 struct SM50_STREAM_OUTPUT_ELEMENT {

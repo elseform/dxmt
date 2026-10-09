@@ -636,6 +636,28 @@ llvm::Error convert_dxbc_vertex_shader(
         .type = to_msl_type(out.componentType()),
       });
     }
+
+    SM50_SHADER_OUTPUT_PAD_DATA *output_pad = nullptr;
+    if (args_get_data<SM50_SHADER_OUTPUT_PAD, SM50_SHADER_OUTPUT_PAD_DATA>(pArgs, &output_pad) &&
+        output_pad && output_pad->mask) {
+      for (unsigned r = 0; r < 32; r++) {
+        if ((output_pad->mask & (1u << r)) == 0)
+          continue;
+        bool already_exists = false;
+        for (auto &out : pShaderInternal->output_signature) {
+          if (!out.isSystemValue() && out.reg() == r) {
+            already_exists = true;
+            break;
+          }
+        }
+        if (!already_exists) {
+          func_signature.DefineOutput(air::OutputVertex{
+            .user = "reg" + std::to_string(r) + "_0",
+            .type = to_msl_type(RegisterComponentType::Float),
+          });
+        }
+      }
+    }
   }
   if (vertex_so) {
     auto bv = func_signature.DefineInput(air::InputBaseVertex{});
@@ -1303,9 +1325,28 @@ AIRCONV_API int SM50Initialize(
       }
       pRefl->GeometryShader.Primitive = sm50_shader->gs_input_primitive;
     }
+    uint32_t output_reg_mask = 0;
+    const D3D11_SIGNATURE_PARAMETER *out_params;
+    outputParser.RastSignature()->GetParameters(&out_params);
+    for (unsigned i = 0; i < outputParser.RastSignature()->GetNumParameters(); i++) {
+      if (out_params[i].SystemValue == microsoft::D3D10_SB_NAME_UNDEFINED && out_params[i].Register < 32) {
+        output_reg_mask |= (1u << out_params[i].Register);
+      }
+    }
+    pRefl->OutputRegisterMask = output_reg_mask;
+
     if (sm50_shader->shader_type == microsoft::D3D10_SB_PIXEL_SHADER) {
       pRefl->PixelShader.ValidRenderTargets = sm50_shader->pso_valid_output_reg_mask;
       pRefl->PixelShader.HasCoverageOutput = sm50_shader->ps_has_coverage_output;
+      uint32_t input_reg_mask = 0;
+      const D3D11_SIGNATURE_PARAMETER *in_params;
+      inputParser.GetParameters(&in_params);
+      for (unsigned i = 0; i < inputParser.GetNumParameters(); i++) {
+        if (in_params[i].SystemValue == microsoft::D3D10_SB_NAME_UNDEFINED && in_params[i].Register < 32) {
+          input_reg_mask |= (1u << in_params[i].Register);
+        }
+      }
+      pRefl->PixelShader.InputRegisterMask = input_reg_mask;
     }
     pRefl->NumOutputElement = sm50_shader->max_output_register;
     pRefl->ArgumentTableQwords = binding_table.Size();

@@ -289,6 +289,30 @@ IREffect init_input_reg_with_interpolation(
   });
 }
 
+IREffect init_default_input_reg(
+  uint32_t to_reg, uint32_t mask, RegisterComponentType type
+) {
+  return make_effect_bind([=](context ctx) {
+    auto const_index =
+      llvm::ConstantInt::get(ctx.llvm, llvm::APInt{32, to_reg, false});
+    if (type == RegisterComponentType::Float) {
+      pvalue def_val = llvm::ConstantDataVector::get(
+        ctx.llvm, llvm::ArrayRef<float>({0.0f, 0.0f, 0.0f, 1.0f})
+      );
+      return store_at_vec4_array_masked(
+        ctx.resource.input.ptr_float4, const_index, def_val, mask
+      );
+    } else {
+      pvalue def_val = llvm::ConstantDataVector::get(
+        ctx.llvm, llvm::ArrayRef<uint32_t>({0u, 0u, 0u, 1u})
+      );
+      return store_at_vec4_array_masked(
+        ctx.resource.input.ptr_int4, const_index, def_val, mask
+      );
+    }
+  });
+}
+
 std::function<IRValue(pvalue)>
 pop_output_reg(uint32_t from_reg, uint32_t mask, uint32_t to_element) {
   return [=](pvalue ret) {
@@ -482,6 +506,13 @@ llvm::Expected<llvm::BasicBlock *> convert_basicblocks(
         [&](BasicBlockUnconditionalBranch uncond) {
           block_to_visit.push(uncond.target);
         },
+        [&](BasicBlockLoopInit loop_init) {
+          block_to_visit.push(loop_init.entrance);
+        },
+        [&](BasicBlockLoopHeader loop_hdr) {
+          block_to_visit.push(loop_hdr.body);
+          block_to_visit.push(loop_hdr.exit);
+        },
         [&](BasicBlockConditionalBranch cond) {
           block_to_visit.push(cond.true_branch);
           block_to_visit.push(cond.false_branch);
@@ -507,6 +538,17 @@ llvm::Expected<llvm::BasicBlock *> convert_basicblocks(
     );
   }
 
+  std::unordered_map<uint32_t, llvm::AllocaInst *> loop_counters;
+  auto get_loop_counter = [&](uint32_t loop_id) -> llvm::AllocaInst * {
+    auto it = loop_counters.find(loop_id);
+    if (it != loop_counters.end()) return it->second;
+    llvm::BasicBlock &entry_bb = function->getEntryBlock();
+    llvm::IRBuilder<> entry_builder(&entry_bb, entry_bb.begin());
+    auto alloca_inst = entry_builder.CreateAlloca(builder.getInt32Ty(), nullptr, "loop_cnt");
+    loop_counters[loop_id] = alloca_inst;
+    return alloca_inst;
+  };
+
   auto load_condition = [&dxbc, &builder](SrcOperand src, bool non_zero_test) {
     auto element = dxbc.LoadOperand(src, kMaskComponentX);
     if (non_zero_test)
@@ -531,6 +573,24 @@ llvm::Expected<llvm::BasicBlock *> convert_basicblocks(
             [&](BasicBlockUnconditionalBranch uncond) -> llvm::Error {
               auto target_bb = visited[uncond.target];
               builder.CreateBr(target_bb);
+              return llvm::Error::success();
+            },
+            [&](BasicBlockLoopInit loop_init) -> llvm::Error {
+              auto counter = get_loop_counter(loop_init.loop_id);
+              builder.CreateStore(builder.getInt32(0), counter);
+              auto target_bb = visited[loop_init.entrance];
+              builder.CreateBr(target_bb);
+              return llvm::Error::success();
+            },
+            [&](BasicBlockLoopHeader loop_hdr) -> llvm::Error {
+              auto counter = get_loop_counter(loop_hdr.loop_id);
+              auto cur_cnt = builder.CreateLoad(builder.getInt32Ty(), counter);
+              auto next_cnt = builder.CreateAdd(cur_cnt, builder.getInt32(1));
+              builder.CreateStore(next_cnt, counter);
+              auto cond = builder.CreateICmpULT(cur_cnt, builder.getInt32(loop_hdr.max_iterations));
+              auto target_body_bb = visited[loop_hdr.body];
+              auto target_exit_bb = visited[loop_hdr.exit];
+              builder.CreateCondBr(cond, target_body_bb, target_exit_bb);
               return llvm::Error::success();
             },
             [&](BasicBlockConditionalBranch cond) -> llvm::Error {

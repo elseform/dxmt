@@ -91,10 +91,12 @@ struct ShaderVariantVertex {
   ManagedInputLayout input_layout_handle;
   uint32_t gs_passthrough;
   bool rasterization_disabled;
+  uint32_t output_pad_mask = 0;
   bool operator==(const this_type &rhs) const {
     return input_layout_handle == rhs.input_layout_handle &&
            gs_passthrough == rhs.gs_passthrough &&
-           rasterization_disabled == rhs.rasterization_disabled;
+           rasterization_disabled == rhs.rasterization_disabled &&
+           output_pad_mask == rhs.output_pad_mask;
   }
 };
 

@@ -141,6 +141,7 @@ CreateVariantShader(MTLD3D11Device *pDevice, ManagedShader shader,
   h.update(getGlobalShaderFlag());
   h.update(variant.gs_passthrough);
   h.update(variant.rasterization_disabled);
+  h.update(variant.output_pad_mask);
   if (variant.input_layout_handle)
     h.update(variant.input_layout_handle->sha1());
   auto variant_digest = h.final();
@@ -149,19 +150,30 @@ CreateVariantShader(MTLD3D11Device *pDevice, ManagedShader shader,
   auto proc = [=](const char *func_name, SM50_SHADER_COMMON_DATA *common) -> sm50_bitcode_t  {
     SM50_SHADER_IA_INPUT_LAYOUT_DATA data_ia_layout;
     SM50_SHADER_GS_PASS_THROUGH_DATA data_gs_passthrough;
-    data_gs_passthrough.type = SM50_SHADER_GS_PASS_THROUGH;
-    data_gs_passthrough.DataEncoded = variant.gs_passthrough;
-    data_gs_passthrough.RasterizationDisabled = variant.rasterization_disabled;
-    data_gs_passthrough.next = common;
+    SM50_SHADER_OUTPUT_PAD_DATA data_output_pad;
+    void *next_arg = common;
+
+    if (variant.output_pad_mask) {
+      data_output_pad.type = SM50_SHADER_OUTPUT_PAD;
+      data_output_pad.mask = variant.output_pad_mask;
+      data_output_pad.next = next_arg;
+      next_arg = &data_output_pad;
+    }
+
     if (variant.input_layout_handle) {
-      data_gs_passthrough.next = &data_ia_layout;
       data_ia_layout.type = SM50_SHADER_IA_INPUT_LAYOUT;
-      data_ia_layout.next = common;
+      data_ia_layout.next = next_arg;
       data_ia_layout.slot_mask = variant.input_layout_handle->input_slot_mask();
       data_ia_layout
           .num_elements = variant.input_layout_handle->input_layout_element(
           (MTL_SHADER_INPUT_LAYOUT_ELEMENT_DESC **)&data_ia_layout.elements);
+      next_arg = &data_ia_layout;
     }
+
+    data_gs_passthrough.type = SM50_SHADER_GS_PASS_THROUGH;
+    data_gs_passthrough.DataEncoded = variant.gs_passthrough;
+    data_gs_passthrough.RasterizationDisabled = variant.rasterization_disabled;
+    data_gs_passthrough.next = next_arg;
 
     sm50_bitcode_t compile_result = nullptr;
     sm50_error_t sm50_err = nullptr;

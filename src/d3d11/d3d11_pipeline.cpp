@@ -26,13 +26,20 @@ public:
       unorm_output_reg_mask |= (uint32_t(IsUnorm8RenderTargetFormat(pDesc->ColorAttachmentFormats[i])) << i);
     }
 
+    uint32_t output_pad_mask = 0;
+    if (pDesc->PixelShader) {
+      uint32_t ps_in = pDesc->PixelShader->reflection().PixelShader.InputRegisterMask;
+      uint32_t vs_out = pDesc->VertexShader->reflection().OutputRegisterMask;
+      output_pad_mask = ps_in & ~vs_out;
+    }
+
     if (pDesc->SOLayout) {
       VertexShader =
           pDesc->VertexShader->get_shader(ShaderVariantVertexStreamOutput{
               pDesc->InputLayout, (uint64_t)pDesc->SOLayout});
     } else {
       VertexShader = pDesc->VertexShader->get_shader(ShaderVariantVertex{
-          pDesc->InputLayout, pDesc->GSPassthrough, !pDesc->RasterizationEnabled});
+          pDesc->InputLayout, pDesc->GSPassthrough, !pDesc->RasterizationEnabled, output_pad_mask});
     }
 
     if (pDesc->PixelShader) {

@@ -807,6 +807,18 @@ struct BasicBlockUnconditionalBranch {
   BasicBlock *target;
 };
 
+struct BasicBlockLoopInit {
+  BasicBlock *entrance;
+  uint32_t loop_id;
+};
+
+struct BasicBlockLoopHeader {
+  BasicBlock *body;
+  BasicBlock *exit;
+  uint32_t loop_id;
+  uint32_t max_iterations;
+};
+
 struct BasicBlockHullShaderWriteOutput {
   uint32_t instance_count;
   BasicBlock *epilogue;
@@ -834,9 +846,9 @@ struct BasicBlockCall {
 };
 
 using BasicBlockTarget = std::variant<
-  BasicBlockConditionalBranch, BasicBlockUnconditionalBranch, BasicBlockSwitch,
-  BasicBlockReturn, BasicBlockInstanceBarrier, BasicBlockHullShaderWriteOutput,
-  BasicBlockCall, BasicBlockUndefined>;
+  BasicBlockConditionalBranch, BasicBlockUnconditionalBranch, BasicBlockLoopInit,
+  BasicBlockLoopHeader, BasicBlockSwitch, BasicBlockReturn, BasicBlockInstanceBarrier,
+  BasicBlockHullShaderWriteOutput, BasicBlockCall, BasicBlockUndefined>;
 
 class BasicBlock {
 public:

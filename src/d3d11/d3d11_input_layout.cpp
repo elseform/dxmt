@@ -81,9 +81,8 @@ HRESULT ExtractMTLInputLayoutElements(
     if (inputSig.SystemValue != D3D10_SB_NAME_UNDEFINED) 
       continue; // ignore SIV & SGV
     if (!(register_mask & (1 << inputSig.Register))) {
-      WARN("CreateInputLayout: Vertex shader expects ", inputSig.SemanticName,
-           "_", inputSig.SemanticIndex, " but it's not in input layout element descriptors");
-      return E_INVALIDARG;
+      DEBUG("CreateInputLayout: Vertex shader expects ", inputSig.SemanticName,
+            "_", inputSig.SemanticIndex, " but it's not in input layout element descriptors (default initialized)");
     }
   }
   *pNumElementsOut = attribute_count;
