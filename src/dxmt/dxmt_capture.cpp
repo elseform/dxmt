@@ -5,6 +5,9 @@
 #ifdef __WIN32
 #include "windows.h"
 #endif
+#ifdef __APPLE__
+#include <unistd.h>
+#endif
 
 namespace dxmt {
 
@@ -14,6 +17,9 @@ CaptureState::CaptureState() {
   if (env::getExeBaseName() != env::getEnvVar("DXMT_CAPTURE_EXECUTABLE"))
     return;
   WARN("DXMT capture enabled");
+#ifdef __APPLE__
+  capture_trigger_file_ = env::getEnvVar("DXMT_CAPTURE_TRIGGER_FILE");
+#endif
   state = State::Idle;
 }
 
@@ -60,6 +66,11 @@ CaptureState::shouldCaptureNextFrame() {
     return true;
   }
   capture_key_pressed_ = state_ & 0x8000;
+#elif defined(__APPLE__)
+  // Native builds cannot poll the Wine F10 key. Consume a user-created file
+  // atomically, then let the existing queue capture the next complete frame.
+  if (state == State::Idle && !capture_trigger_file_.empty())
+    return ::unlink(capture_trigger_file_.c_str()) == 0;
 #endif
   return false;
 };
