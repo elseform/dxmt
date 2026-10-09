@@ -13,6 +13,9 @@
 #include <cstdlib>
 #include <numeric>
 #include <filesystem>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 
 #ifdef __linux__
 #include <unistd.h>
@@ -84,6 +87,13 @@ std::string getExePath() {
   exePath.resize(len);
 
   return str::fromws(exePath.data());
+#elif defined(__APPLE__)
+  uint32_t size = 0;
+  _NSGetExecutablePath(nullptr, &size);
+  std::vector<char> exePath(size);
+  if (!size || _NSGetExecutablePath(exePath.data(), &size) != 0)
+    return {};
+  return std::string(exePath.data());
 #elif defined(__linux__)
   std::array<char, PATH_MAX> exePath = {};
 
