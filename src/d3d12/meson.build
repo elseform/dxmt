@@ -20,7 +20,7 @@ d3d12_src = [
   '../d3d10/d3d10_blob.cpp',
 ]
 
-d3d12_ld_args      = ['-L' + windows_native_install_dir] # a nice trick to force relink
+d3d12_ld_args      = windows_native_install_dir != '' ? ['-L' + windows_native_install_dir] : []
 d3d12_link_depends = []
 
 d3d12_dll = shared_library('d3d12', d3d12_src,
