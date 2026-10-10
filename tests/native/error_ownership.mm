@@ -41,10 +41,12 @@ int main() {
     WMT::Reference<WMT::Error> pipeline_error;
     const char vertex_source[] =
         "#include <metal_stdlib>\nusing namespace metal;\n"
-        "vertex float4 test_vertex(float4 p [[attribute(0)]]) { return p; }";
+        "struct Input { float4 p [[attribute(0)]]; };\n"
+        "vertex float4 test_vertex(Input in [[stage_in]]) { return in.p; }";
     auto vertex_library = bridge.newLibraryWithSource(vertex_source, pipeline_error);
     if (!vertex_library || pipeline_error) {
-      std::fprintf(stderr, "Valid vertex source failed to compile\n");
+      std::fprintf(stderr, "Valid vertex source failed to compile: %s\n",
+                   pipeline_error ? pipeline_error.description().getUTF8String() : "no library");
       return 1;
     }
     auto function = vertex_library.newFunction("test_vertex");
