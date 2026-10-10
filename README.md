@@ -46,6 +46,9 @@ In commit order:
   hardcoded off, and stops `changeDisplaySync()` from pushing layer
   properties to the Metal layer while a pixel-format/size/sample-count/
   color-space change from `changeLayerProperties()` is still deferred.
+- **Motion-vector write tracking** (`071651e`). The downscale dispatch tracks
+  the destination's full texture view before the temporal scaler reads it;
+  the write previously used an empty view key and escaped fence tracking.
 - **Blit encoder merging, opt-in** (`05ba201`). With `DXMT_REORDER_BLITS=1`,
   a blit encoder is moved past independent encoders into the next blit encoder,
   so fewer encoders and render passes are split per frame. Off by default.
@@ -86,6 +89,6 @@ In commit order:
   row per presented frame: frame interval, latency and limiter waits, commit
   and sync waits, encode times, drawable wait, GPU time and pass counts.
 
-Everything else in `release`'s history versus upstream is the rebase carrying
-these same fixes forward onto newer upstream commits (the fixes were rebased
-onto `3Shain/dxmt` `7c8dee1`), not new work.
+Everything else in `release`'s history versus upstream is merging newer
+`3Shain/dxmt` commits into `release`, not new work. The upstream base of each
+release is stated in [CHANGELOG.md](CHANGELOG.md).
