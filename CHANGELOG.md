@@ -7,6 +7,29 @@ prefix before the rebrand to Anomaly; those tags and their entries below keep
 their original names. The full list of fixes this fork carries over upstream
 `3Shain/dxmt` is in the README, "Fixes introduced".
 
+## anomaly-2026.10.10 (2026-10-10)
+
+Upstream base updated to `3Shain/dxmt` `e94c312`
+(`v0.80` plus 262 upstream commits).
+
+### Changed
+
+- Merged 18 upstream commits, including support for copying between different
+  texture types with `CopySubresourceRegion()` and fixes in shader translation,
+  resource initialization, NVAPI and NVNGX.
+
+### Fixed
+
+- **Motion-vector synchronization.** The downscale dispatch now tracks the
+  destination's full texture view before the temporal scaler reads it.
+  Previously the write used an empty view key and escaped fence tracking.
+  This completes upstream's correction of the read side. (`071651e`)
+- Upstream fixes include a deadlock in reentrant `ResizeTarget()`, device
+  locking in `Signal()` and `Wait()`, valid null blend/rasterizer state
+  descriptors, and failed D3D12 input-layout extraction.
+- The oldest release entry now names the README's existing "Fixes introduced"
+  heading.
+
 ## anomaly-2026.09.30 (2026-09-30)
 
 Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
