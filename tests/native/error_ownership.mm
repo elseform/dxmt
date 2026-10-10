@@ -45,8 +45,10 @@ int main() {
         "vertex float4 test_vertex(Input in [[stage_in]]) { return in.p; }";
     auto vertex_library = bridge.newLibraryWithSource(vertex_source, pipeline_error);
     if (!vertex_library || pipeline_error) {
+      const std::string message = pipeline_error
+          ? pipeline_error.description().getUTF8String() : "no library";
       std::fprintf(stderr, "Valid vertex source failed to compile: %s\n",
-                   pipeline_error ? pipeline_error.description().getUTF8String() : "no library");
+                   message.c_str());
       return 1;
     }
     auto function = vertex_library.newFunction("test_vertex");
