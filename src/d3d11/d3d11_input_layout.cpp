@@ -83,6 +83,12 @@ HRESULT ExtractMTLInputLayoutElements(
     if (!(register_mask & (1 << inputSig.Register))) {
       WARN("CreateInputLayout: Vertex shader expects ", inputSig.SemanticName,
            "_", inputSig.SemanticIndex, " but it's not in input layout element descriptors");
+      for (UINT j = 0; j < NumElements; j++) {
+        const auto &desc = pInputElementDescs[j];
+        WARN("CreateInputLayout: provided ", desc.SemanticName, "_", desc.SemanticIndex,
+             " slot=", desc.InputSlot, " offset=", desc.AlignedByteOffset,
+             " format=", uint32_t(desc.Format));
+      }
       return E_INVALIDARG;
     }
   }
