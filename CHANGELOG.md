@@ -106,4 +106,4 @@ Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 ## 0.80-gamma (2026-09-24)
 
 First published release of the fork. Its fixes are listed in the README,
-"Fixes on top of upstream".
+"Fixes introduced".
