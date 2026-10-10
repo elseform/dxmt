@@ -1,1 +1,5 @@
-subdir('dx11')
+if dxmt_crossbuild
+  subdir('dx11')
+else
+  subdir('native')
+endif

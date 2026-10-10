@@ -60,6 +60,8 @@ private:
 
 template <> struct task_trait<ThreadpoolWork *> {
   ThreadpoolWork *run_task(ThreadpoolWork *task) {
+    // Drain Metal temporaries after each task, before worker thread teardown.
+    auto pool = WMT::MakeAutoreleasePool();
     return task->RunThreadpoolWork();
   }
   bool get_done(ThreadpoolWork *task) { return task->GetIsDone(); }

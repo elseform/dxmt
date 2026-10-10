@@ -752,8 +752,9 @@ public:
 
   Reference<Function>
   newFunctionWithConstants(
-      const char *name, const WMTFunctionConstant *constants, uint32_t num_constants, Error &error
+      const char *name, const WMTFunctionConstant *constants, uint32_t num_constants, Reference<Error> &error
   ) {
+    error = nullptr;
     return Reference<Function>(
         MTLLibrary_newFunctionWithConstants(handle, name, constants, num_constants, &error.handle)
     );
@@ -763,7 +764,8 @@ public:
 class BinaryArchive : public Object {
 public:
   void
-  serialize(const char *url, Error &error) {
+  serialize(const char *url, Reference<Error> &error) {
+    error = nullptr;
     MTLBinaryArchive_serialize(handle, url, &error.handle);
   }
 };
@@ -830,7 +832,8 @@ public:
   }
 
   Reference<Library>
-  newLibrary(const void *bytecode, uint64_t bytecode_length, Error &error) {
+  newLibrary(const void *bytecode, uint64_t bytecode_length, Reference<Error> &error) {
+    error = nullptr;
     auto data = DispatchData_alloc_init((uint64_t)bytecode, bytecode_length);
     auto ret = Reference<Library>(MTLDevice_newLibrary(handle, data, &error.handle));
     NSObject_release(data);
@@ -838,7 +841,8 @@ public:
   }
 
   Reference<Library>
-  newLibraryFromNativeBuffer(uint64_t bytecode, uint64_t bytecode_length, Error &error) {
+  newLibraryFromNativeBuffer(uint64_t bytecode, uint64_t bytecode_length, Reference<Error> &error) {
+    error = nullptr;
     auto data = DispatchData_alloc_init(bytecode, bytecode_length);
     auto ret = Reference<Library>(MTLDevice_newLibrary(handle, data, &error.handle));
     NSObject_release(data);
@@ -846,17 +850,20 @@ public:
   }
 
   Reference<Library>
-  newLibrary(DispatchData data, Error &error) {
+  newLibrary(DispatchData data, Reference<Error> &error) {
+    error = nullptr;
     return Reference<Library>(MTLDevice_newLibrary(handle, data, &error.handle));
   }
 
   Reference<Library>
-  newLibraryWithSource(std::string_view view, Error &error) {
+  newLibraryWithSource(std::string_view view, Reference<Error> &error) {
+    error = nullptr;
     return Reference<Library>(MTLDevice_newLibraryWithSource(handle, view.data(), view.length(), &error.handle));
   }
 
   Reference<ComputePipelineState>
-  newComputePipelineState(const Function &compute_function, Error &error) {
+  newComputePipelineState(const Function &compute_function, Reference<Error> &error) {
+    error = nullptr;
     WMTComputePipelineInfo info;
     info.compute_function = compute_function;
     info.tgsize_is_multiple_of_sgwidth = false;
@@ -870,7 +877,8 @@ public:
   }
 
   Reference<ComputePipelineState>
-  newComputePipelineState(const Function &compute_function, bool tgsize_is_multiple_of_sgwidth, Error &error) {
+  newComputePipelineState(const Function &compute_function, bool tgsize_is_multiple_of_sgwidth, Reference<Error> &error) {
+    error = nullptr;
     WMTComputePipelineInfo info;
     info.compute_function = compute_function;
     info.tgsize_is_multiple_of_sgwidth = tgsize_is_multiple_of_sgwidth;
@@ -884,22 +892,26 @@ public:
   }
 
   Reference<RenderPipelineState>
-  newRenderPipelineState(const WMTRenderPipelineInfo &info, Error &error) {
+  newRenderPipelineState(const WMTRenderPipelineInfo &info, Reference<Error> &error) {
+    error = nullptr;
     return Reference<RenderPipelineState>(MTLDevice_newRenderPipelineState(handle, &info, &error.handle));
   }
 
   Reference<ComputePipelineState>
-  newComputePipelineState(const WMTComputePipelineInfo &info, Error &error) {
+  newComputePipelineState(const WMTComputePipelineInfo &info, Reference<Error> &error) {
+    error = nullptr;
     return Reference<ComputePipelineState>(MTLDevice_newComputePipelineState(handle, &info, &error.handle));
   }
 
   Reference<RenderPipelineState>
-  newRenderPipelineState(const WMTMeshRenderPipelineInfo &info, Error &error) {
+  newRenderPipelineState(const WMTMeshRenderPipelineInfo &info, Reference<Error> &error) {
+    error = nullptr;
     return Reference<RenderPipelineState>(MTLDevice_newMeshRenderPipelineState(handle, &info, &error.handle));
   }
 
   Reference<RenderPipelineState>
-  newRenderPipelineState(const WMTTileRenderPipelineInfo &info, Error &error) {
+  newRenderPipelineState(const WMTTileRenderPipelineInfo &info, Reference<Error> &error) {
+    error = nullptr;
     return Reference<RenderPipelineState>(MTLDevice_newTileRenderPipelineState(handle, &info, &error.handle));
   }
 
@@ -914,7 +926,8 @@ public:
   }
 
   Reference<ResidencySet>
-  newResidencySet(uint64_t init_capacity, Error &error) {
+  newResidencySet(uint64_t init_capacity, Reference<Error> &error) {
+    error = nullptr;
     return Reference<ResidencySet>(MTLDevice_newResidencySet(handle, init_capacity, &error.handle));
   }
 
@@ -969,7 +982,8 @@ public:
   }
 
   Reference<BinaryArchive>
-  newBinaryArchive(const char *url, Error &error) {
+  newBinaryArchive(const char *url, Reference<Error> &error) {
+    error = nullptr;
     return Reference<BinaryArchive>(MTLDevice_newBinaryArchive(handle, url, &error.handle));
   }
 
