@@ -21,6 +21,8 @@ winemetal_dll = shared_library('winemetal', winemetal_src,
   c_args              : ['-ObjC', '-DDXMT_NATIVE=1'],
   link_args           : winemetal_ld_args,
   build_rpath         : '@loader_path/:@loader_path/../../',
+  install             : true,
+  install_dir         : windows_native_install_dir,
 )
 
 winemetal_dep = declare_dependency(
