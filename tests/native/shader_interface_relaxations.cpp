@@ -53,14 +53,10 @@ static bool contains(const std::string &haystack, const char *needle) {
 int main() {
   using namespace microsoft;
 
-  // Register numbers of the fixture's inputs.
-  //
-  // Known gap: vkd3d-shader's HLSL path marks every declared input component
-  // as always read (`element->used_mask = element->mask; /* FIXME */` in
-  // hlsl_codegen.c), so NORMAL below has a full always-read mask although it is
-  // never read. CreateInputLayout's read-mask relaxation therefore does not
-  // apply to vkd3d-compiled vertex shaders yet. Add the signature check here
-  // once the compiler reports the real mask.
+  // Register numbers of the fixture's inputs. CreateInputLayout accepts a
+  // layout that omits any input of the shader (ExtractMTLInputLayoutElements
+  // warns and continues); the converter below supplies the zero. The always-read
+  // mask is not consulted, because compilers disagree on it.
   CSignatureParser parser;
   CHECK(DXBCGetInputSignature(kVsDxbc, &parser) == S_OK, "input signature");
   const D3D11_SIGNATURE_PARAMETER *params = nullptr;
