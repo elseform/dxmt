@@ -82,7 +82,9 @@ public:
       PixelShader = pDesc->PixelShader->get_shader(ShaderVariantPixel{
           pDesc->SampleMask, pDesc->BlendState->IsDualSourceBlending(),
           depth_stencil_format == WMTPixelFormatInvalid,
-          unorm_output_reg_mask});
+          unorm_output_reg_mask,
+          UnwrittenPixelInputs(pDesc->DomainShader->reflection(),
+                               pDesc->PixelShader->reflection())});
       ps_valid_render_targets = pDesc->PixelShader->reflection().PSValidRenderTargets;
     } else {
       PixelShader = nullptr;

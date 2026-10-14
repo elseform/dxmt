@@ -268,6 +268,9 @@ IREffect init_input_reg_with_interpolation(
   air::Interpolation interpolation, uint32_t sampleidx_at
 );
 
+/** sets the components of an input register that no stage supplies to zero */
+IREffect init_input_reg_zero(uint32_t to_reg, uint32_t mask);
+
 std::function<IRValue(pvalue)>
 pop_output_reg(uint32_t from_reg, uint32_t mask, uint32_t to_element);
 
@@ -331,6 +334,7 @@ struct SignatureContext {
   bool skip_vertex_output;
   uint32_t pull_mode_reg_mask;
   uint32_t unorm_output_reg_mask;
+  uint32_t unwritten_input_reg_mask;
   // it is considered optional (as a hint)
   air::MTLPixelFormat pixel_formats[8];
 
@@ -346,7 +350,8 @@ struct SignatureContext {
       disable_depth_output(false),
       skip_vertex_output(false),
       pull_mode_reg_mask(0),
-      unorm_output_reg_mask(0) {
+      unorm_output_reg_mask(0),
+      unwritten_input_reg_mask(0) {
     memset(pixel_formats, 0, sizeof(pixel_formats));
   };
 };
