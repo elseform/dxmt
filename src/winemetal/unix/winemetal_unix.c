@@ -1980,6 +1980,7 @@ struct SM50_SHADER_PSO_PIXEL_SHADER_DATA32 {
   uint32_t unorm_output_reg_mask;
   /** MTLPixelFormat */
   uint32_t pixel_formats[8];
+  uint32_t unwritten_input_reg_mask;
 };
 
 struct SM50_SHADER_GS_PASS_THROUGH_DATA32 {
@@ -2062,6 +2063,7 @@ sm50_compilation_argument32_convert(
       data->sample_mask = src->sample_mask;
       data->dual_source_blending = src->dual_source_blending;
       memcpy(data->pixel_formats, src->pixel_formats, sizeof(data->pixel_formats));
+      data->unwritten_input_reg_mask = src->unwritten_input_reg_mask;
       break;
     }
     case SM50_SHADER_IA_INPUT_LAYOUT: {

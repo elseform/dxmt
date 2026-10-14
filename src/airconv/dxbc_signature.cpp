@@ -135,15 +135,21 @@ void handle_signature_vs(
         [=, type = (InputAttributeComponentType)sig.componentType(),
          name = sig.consistentAttributeName()](SignatureContext &ctx) {
           if (ctx.ia_layout) {
+            bool supplied = false;
             for (unsigned i = 0; i < ctx.ia_layout->num_elements; i++) {
               if (ctx.ia_layout->elements[i].reg == reg) {
                 ctx.prologue << pull_vertex_input(
                   ctx.func_signature, reg, mask, ctx.ia_layout->elements[i],
                   ctx.ia_layout->slot_mask
                 );
+                supplied = true;
                 break;
               }
             }
+            // the input layout may omit an input the shader does not always
+            // read (see ExtractMTLInputLayoutElements)
+            if (!supplied)
+              ctx.prologue << init_input_reg_zero(reg, mask);
           } else {
             auto assigned_index = ctx.func_signature.DefineInput(
               InputVertexStageIn{.attribute = reg, .type = type, .name = name}
@@ -441,6 +447,12 @@ void handle_signature_ps(
     signature_handlers.push_back([=, type = sig.componentType(), name = sig.consistentAttributeName()]
     (SignatureContext &ctx) {
       bool pull_mode = bool(ctx.pull_mode_reg_mask & (1 << reg)) && interpolation != air::Interpolation::flat;
+      if (!pull_mode && (ctx.unwritten_input_reg_mask & (1 << reg))) {
+        // no stage upstream writes this interpolant: Metal refuses a fragment
+        // input without a matching vertex output, D3D reads zero
+        ctx.prologue << init_input_reg_zero(reg, mask);
+        return;
+      }
       auto assigned_index = ctx.func_signature.DefineInput(InputFragmentStageIn{
         .user = name, .type = to_msl_type(type), .interpolation = interpolation, .pull_mode = pull_mode
       });
