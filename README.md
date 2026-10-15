@@ -7,6 +7,11 @@ separate Wine and native Darwin build configurations.
 
 See [DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
+The Metal HUD identifies builds from `release` with the existing Git tag
+description. Other named branches show their branch name. Detached builds
+retain the tag/hash fallback. This identity is embedded at build time in both
+Wine and native configurations.
+
 ### Fixes introduced
 
 In commit order:

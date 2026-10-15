@@ -140,7 +140,7 @@ endif
 add_project_arguments('-DDXMT_PAGE_SIZE=4096', language: 'cpp')
 
 dxmt_version = vcs_tag(
-  command: ['git', 'describe', '--always'],
+  command: ['sh', files('build-aux/version.sh'), meson.project_source_root()],
   input:  'version.h.in',
   output: 'version.h',
 )

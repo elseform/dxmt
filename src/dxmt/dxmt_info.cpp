@@ -36,7 +36,7 @@ GetVersionDescriptionText([[maybe_unused]] uint32_t ApiVersion, uint32_t Feature
     break;
   }
   // The Metal HUD shows this line; macOS 26+ cuts long metric values, so keep it to the
-  // feature level and the release tag.
+  // feature level and the release tag or development branch.
   return str::format("FL_", feature_level_text, " ", DXMT_VERSION);
 }
 
