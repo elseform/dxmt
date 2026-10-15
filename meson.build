@@ -140,7 +140,9 @@ endif
 add_project_arguments('-DDXMT_PAGE_SIZE=4096', language: 'cpp')
 
 dxmt_version = vcs_tag(
-  command: ['sh', files('build-aux/version.sh'), meson.project_source_root()],
+  # Absolute path: vcs_tag runs the command from the source directory, so a
+  # build-relative files() path would not resolve and the version would fall back.
+  command: ['sh', meson.project_source_root() / 'build-aux' / 'version.sh', meson.project_source_root()],
   input:  'version.h.in',
   output: 'version.h',
 )
