@@ -232,6 +232,10 @@ static void run_packed() {
 }
 
 int main() {
+  // The relaxations change the converted output for a given DXBC and variant digest, so the cache
+  // namespace must have moved past the version that held conversions without them.
+  CHECK(AIRCONV_VERSION >= 27, "AIRCONV_VERSION %d still names the cache that predates the relaxations",
+        AIRCONV_VERSION);
   run_unpacked(kVsDxbc, sizeof(kVsDxbc), kPsDxbc, sizeof(kPsDxbc), false);
   run_unpacked(kVkd_vs_read, sizeof(kVkd_vs_read), kVkd_ps, sizeof(kVkd_ps), true);
   run_unpacked(kFxc_vs_read, sizeof(kFxc_vs_read), kFxc_ps, sizeof(kFxc_ps), true);
