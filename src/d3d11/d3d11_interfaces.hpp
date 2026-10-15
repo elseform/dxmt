@@ -39,12 +39,25 @@ DEFINE_COM_INTERFACE("43ace3ce-1956-448b-a4eb-aee68bdeb283",
 
 typedef enum MTL_FEATURE {
   MTL_FEATURE_METALFX_TEMPORAL_SCALER = 0,
+  MTL_FEATURE_METALFX_SPATIAL_SCALER = 1,
 } MTL_FEATURE;
 
 DEFINE_COM_INTERFACE("19a8e35a-38be-418f-94e3-9f7323936870", IMTLD3D11ContextExt1) : public IMTLD3D11ContextExt {
   virtual HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
       MTL_FEATURE Feature, void *pFeatureSupportData, UINT FeatureSupportDataSize
   ) = 0;
+};
+
+struct MTL_SPATIAL_UPSCALE_D3D11_DESC {
+  ID3D11Resource *Color;  // input, 2D, single sample
+  ID3D11Resource *Output; // render target usage, larger than or equal to Color in both dimensions
+};
+
+DEFINE_COM_INTERFACE("5d8b3f0c-6a2e-4c1f-9b47-2e0a8c91f6d3", IMTLD3D11ContextExt2) : public IMTLD3D11ContextExt1 {
+  // Scales Color into Output with MetalFX Spatial on the context's own command
+  // stream. Returns E_FAIL with no GPU work submitted when the device lacks the
+  // scaler, the textures are unsupported, or scaler creation fails.
+  virtual HRESULT STDMETHODCALLTYPE SpatialUpscale(const MTL_SPATIAL_UPSCALE_D3D11_DESC *pDesc) = 0;
 };
 
 DEFINE_COM_INTERFACE("efc77ae6-2179-4c0a-b844-7661ca0dcde7", IMTLD3D11DeviceExt)

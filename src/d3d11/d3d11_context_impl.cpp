@@ -646,7 +646,8 @@ public:
       return S_OK;
     }
 
-    if (riid == __uuidof(IMTLD3D11ContextExt) || riid == __uuidof(IMTLD3D11ContextExt1)) {
+    if (riid == __uuidof(IMTLD3D11ContextExt) || riid == __uuidof(IMTLD3D11ContextExt1) ||
+        riid == __uuidof(IMTLD3D11ContextExt2)) {
       *ppvObject = ref(&ext_);
       return S_OK;
     }
@@ -5250,7 +5251,7 @@ public:
 };
 
 template <typename ContextInternalState>
-class MTLD3D11ContextExt : public IMTLD3D11ContextExt1 {
+class MTLD3D11ContextExt : public IMTLD3D11ContextExt2 {
   class CachedTemporalScaler {
   public:
     WMTPixelFormat color_pixel_format;
@@ -5267,6 +5268,16 @@ class MTLD3D11ContextExt : public IMTLD3D11ContextExt1 {
     Rc<TemporalScaler> scaler;
     Rc<Texture> mv_downscaled;
     Rc<Texture> depth_cropped;
+  };
+  class CachedSpatialScaler {
+  public:
+    WMTPixelFormat color_pixel_format;
+    WMTPixelFormat output_pixel_format;
+    uint32_t input_width;
+    uint32_t input_height;
+    uint32_t output_width;
+    uint32_t output_height;
+    Rc<SpatialScaler> scaler;
   };
 public:
   MTLD3D11ContextExt(MTLD3D11DeviceContextImplBase<ContextInternalState> *context) : ctx_(context){};
@@ -5536,6 +5547,78 @@ public:
     });
   }
 
+  HRESULT STDMETHODCALLTYPE SpatialUpscale(const MTL_SPATIAL_UPSCALE_D3D11_DESC *pDesc) final {
+    if (!pDesc || !pDesc->Color || !pDesc->Output)
+      return E_INVALIDARG;
+    if (!ctx_->device->GetMTLDevice().supportsFXSpatialScaler()) {
+      ERR("SpatialUpscale: MetalFX spatial scaler unsupported on this device");
+      return E_FAIL;
+    }
+    Rc<Texture> input, output;
+    if (!(input = static_cast<D3D11ResourceCommon *>(pDesc->Color)->texture()))
+      return E_INVALIDARG;
+    if (!(output = static_cast<D3D11ResourceCommon *>(pDesc->Output)->texture()))
+      return E_INVALIDARG;
+    if (input.ptr() == output.ptr() || input->sampleCount() != 1 || output->sampleCount() != 1 ||
+        input->width() == 0 || input->height() == 0 || output->width() < input->width() ||
+        output->height() < input->height()) {
+      ERR("SpatialUpscale: invalid layout ", input->width(), "x", input->height(), " samples=", input->sampleCount(),
+          " -> ", output->width(), "x", output->height(), " samples=", output->sampleCount());
+      return E_INVALIDARG;
+    }
+
+    Rc<SpatialScaler> scaler;
+    for (CachedSpatialScaler &entry : spatial_scaler_cache_) {
+      if (input->width() != entry.input_width || input->height() != entry.input_height ||
+          output->width() != entry.output_width || output->height() != entry.output_height ||
+          input->pixelFormat() != entry.color_pixel_format || output->pixelFormat() != entry.output_pixel_format)
+        continue;
+      scaler = entry.scaler;
+      break;
+    }
+    if (!scaler) {
+      CachedSpatialScaler entry;
+      entry.color_pixel_format = input->pixelFormat();
+      entry.output_pixel_format = output->pixelFormat();
+      entry.input_width = input->width();
+      entry.input_height = input->height();
+      entry.output_width = output->width();
+      entry.output_height = output->height();
+      WMTFXSpatialScalerInfo info;
+      info.color_format = entry.color_pixel_format;
+      info.output_format = entry.output_pixel_format;
+      info.input_width = entry.input_width;
+      info.input_height = entry.input_height;
+      info.output_width = entry.output_width;
+      info.output_height = entry.output_height;
+      entry.scaler = new SpatialScaler(ctx_->device->GetMTLDevice(), info);
+      if (!entry.scaler->scaler()) {
+        ERR("SpatialUpscale: MetalFX spatial scaler creation failed for ", input->width(), "x", input->height(), " -> ",
+            output->width(), "x", output->height(), " fmt=", input->pixelFormat(), "/", output->pixelFormat());
+        return E_FAIL;
+      }
+      Logger::info(str::format(
+          "SpatialUpscale: ", input->width(), "x", input->height(), " -> ", output->width(), "x", output->height(),
+          " fmt=", input->pixelFormat(), "/", output->pixelFormat()));
+      scaler = entry.scaler;
+      // scalers are never destroyed, as for the temporal path: sizes change rarely
+      spatial_scaler_cache_.push_back(std::move(entry));
+    }
+
+    ctx_->InvalidateCurrentPass();
+    ctx_->EmitOP([input = std::move(input), output = std::move(output), scaler = std::move(scaler)](
+                     ArgumentEncodingContext &enc) mutable {
+      auto &scaler_info = enc.currentFrameStatistics().last_scaler_info;
+      scaler_info.type = ScalerType::Spatial;
+      scaler_info.input_width = input->width();
+      scaler_info.input_height = input->height();
+      scaler_info.output_width = output->width();
+      scaler_info.output_height = output->height();
+      enc.upscale(input, output, scaler);
+    });
+    return S_OK;
+  }
+
   void STDMETHODCALLTYPE BeginUAVOverlap() final {
     ctx_->EmitOP([](ArgumentEncodingContext &enc) {
       enc.setIntrapassBarrierControl(kIntrapassControlBitIgnoreUAVWaW);
@@ -5553,6 +5636,12 @@ public:
     if (!pFeatureSupportData)
       return E_INVALIDARG;
     switch (Feature) {
+    case MTL_FEATURE_METALFX_SPATIAL_SCALER: {
+      if (FeatureSupportDataSize != sizeof(BOOL))
+        return E_INVALIDARG;
+      *reinterpret_cast<BOOL *>(pFeatureSupportData) = ctx_->device->GetMTLDevice().supportsFXSpatialScaler();
+      return S_OK;
+    }
     case MTL_FEATURE_METALFX_TEMPORAL_SCALER: {
       if (FeatureSupportDataSize != sizeof(BOOL))
         return E_INVALIDARG;
@@ -5567,6 +5656,7 @@ private:
 
   MTLD3D11DeviceContextImplBase<ContextInternalState> *ctx_;
   std::vector<CachedTemporalScaler> scaler_cache_;
+  std::vector<CachedSpatialScaler> spatial_scaler_cache_;
 };
 
 struct used_dynamic_buffer {
