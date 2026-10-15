@@ -81,9 +81,12 @@ HRESULT ExtractMTLInputLayoutElements(
     if (inputSig.SystemValue != D3D10_SB_NAME_UNDEFINED) 
       continue; // ignore SIV & SGV
     if (!(register_mask & (1 << inputSig.Register))) {
+      // An input the layout does not supply reads as zero: the vertex shader
+      // prologue initialises its register (see dxbc_signature.cpp). Direct3D
+      // 11 permits omitted inputs; refusing the layout would reject the draw.
+      // Compilers also disagree on which inputs count as always read.
       WARN("CreateInputLayout: Vertex shader expects ", inputSig.SemanticName,
            "_", inputSig.SemanticIndex, " but it's not in input layout element descriptors");
-      return E_INVALIDARG;
     }
   }
   *pNumElementsOut = attribute_count;

@@ -104,11 +104,13 @@ struct ShaderVariantPixel {
   bool dual_source_blending;
   bool disable_depth_output;
   uint32_t unorm_output_reg_mask;
+  uint32_t unwritten_input_reg_mask = 0;
   bool operator==(const this_type &rhs) const {
     return sample_mask == rhs.sample_mask &&
            dual_source_blending == rhs.dual_source_blending &&
            disable_depth_output == rhs.disable_depth_output &&
-           unorm_output_reg_mask == rhs.unorm_output_reg_mask;
+           unorm_output_reg_mask == rhs.unorm_output_reg_mask &&
+           unwritten_input_reg_mask == rhs.unwritten_input_reg_mask;
   }
 };
 
@@ -178,6 +180,16 @@ struct ShaderVariantVertexStreamOutput {
            stream_output_layout_handle == rhs.stream_output_layout_handle;
   }
 };
+
+/**
+Interpolant registers a pixel shader reads that the shader of the last stage
+before rasterization never writes. Metal rejects such a fragment input; D3D
+reads zero.
+ */
+inline uint32_t UnwrittenPixelInputs(
+    const MTL_SHADER_REFLECTION &upstream, const MTL_SHADER_REFLECTION &pixel) {
+  return pixel.InputRegisterMask & ~upstream.OutputRegisterMask;
+}
 
 using ShaderVariant =
     std::variant<ShaderVariantDefault, ShaderVariantVertex, ShaderVariantPixel,

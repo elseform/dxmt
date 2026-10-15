@@ -250,6 +250,15 @@ IREffect init_input_reg(
   });
 };
 
+IREffect init_input_reg_zero(uint32_t to_reg, uint32_t mask) {
+  return make_effect_bind([=](context ctx) {
+    return store_at_vec4_array_masked(
+      ctx.resource.input.ptr_int4, ctx.builder.getInt32(to_reg),
+      llvm::ConstantAggregateZero::get(ctx.types._int4), mask
+    );
+  });
+}
+
 IREffect init_input_reg_with_interpolation(
   uint32_t with_fnarg_at, uint32_t to_reg, uint32_t mask,
   air::Interpolation interpolation, uint32_t sampleidx_at

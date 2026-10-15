@@ -332,6 +332,7 @@ llvm::Error convert_dxbc_pixel_shader(
   bool pso_disable_depth_output = false;
   uint32_t pso_unorm_output_reg_mask = 0;
   uint32_t *pso_pixel_formats = nullptr;
+  uint32_t pso_unwritten_input_reg_mask = 0;
   SM50_SHADER_PSO_PIXEL_SHADER_DATA *pso_data = nullptr;
   if (args_get_data<SM50_SHADER_PSO_PIXEL_SHADER, SM50_SHADER_PSO_PIXEL_SHADER_DATA>(pArgs, &pso_data)) {
     pso_dual_source_blending = pso_data->dual_source_blending;
@@ -339,6 +340,7 @@ llvm::Error convert_dxbc_pixel_shader(
     pso_unorm_output_reg_mask = pso_data->unorm_output_reg_mask;
     pso_sample_mask = pso_data->sample_mask;
     pso_pixel_formats = pso_data->pixel_formats;
+    pso_unwritten_input_reg_mask = pso_data->unwritten_input_reg_mask;
   }
   SM50_SHADER_METAL_VERSION metal_version = SM50_SHADER_METAL_310;
   SM50_SHADER_FLAG shader_flags = {};
@@ -368,6 +370,7 @@ llvm::Error convert_dxbc_pixel_shader(
     sig_ctx.disable_depth_output = pso_disable_depth_output;
     sig_ctx.pull_mode_reg_mask = shader_info->pull_mode_reg_mask;
     sig_ctx.unorm_output_reg_mask = pso_unorm_output_reg_mask;
+    sig_ctx.unwritten_input_reg_mask = pso_unwritten_input_reg_mask;
     if (pso_pixel_formats)
       memcpy(sig_ctx.pixel_formats, pso_pixel_formats, sizeof(sig_ctx.pixel_formats));
     for (auto &p : pShaderInternal->signature_handlers) {
@@ -1309,6 +1312,21 @@ AIRCONV_API int SM50Initialize(
     }
     pRefl->NumOutputElement = sm50_shader->max_output_register;
     pRefl->ArgumentTableQwords = binding_table.Size();
+    pRefl->OutputRegisterMask = 0;
+    for (auto &out : sm50_shader->output_signature) {
+      if (!out.isSystemValue() && out.reg() < 32)
+        pRefl->OutputRegisterMask |= 1u << out.reg();
+    }
+    pRefl->InputRegisterMask = 0;
+    if (sm50_shader->shader_type == microsoft::D3D10_SB_PIXEL_SHADER) {
+      const D3D11_SIGNATURE_PARAMETER *input_parameters;
+      inputParser.GetParameters(&input_parameters);
+      for (unsigned i = 0; i < inputParser.GetNumParameters(); i++) {
+        auto in = Signature(input_parameters[i]);
+        if (!in.isSystemValue() && in.reg() < 32)
+          pRefl->InputRegisterMask |= 1u << in.reg();
+      }
+    }
   }
 
   *ppShader = sm50_shader;

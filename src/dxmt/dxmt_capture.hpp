@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 
 namespace dxmt {
 
@@ -26,6 +27,9 @@ private:
   State state = State::Freezed;
   uint64_t next_capture_frame = 0;
   bool capture_key_pressed_ = false;
+#ifdef __APPLE__
+  std::string capture_trigger_file_;
+#endif
 };
 
 } // namespace dxmt

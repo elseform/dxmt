@@ -8,6 +8,17 @@
 #include "wsi_monitor.hpp"
 #include <string>
 #define __NVAPI_EMPTY_SAL
+#ifdef __APPLE__
+// nvapi.h declares two COM interfaces with the MSVC macros; the native headers lack them.
+#ifndef __declspec
+#define __declspec(x)
+#endif
+#ifndef DECLARE_INTERFACE_
+#define DECLARE_INTERFACE_(name, base) struct name : base
+#define BEGIN_INTERFACE
+#define END_INTERFACE
+#endif
+#endif
 #include "nvapi.h"
 #include "nvapi_interface.h"
 #include "nvShaderExtnEnums.h"
@@ -209,6 +220,20 @@ NvAPI_DISP_GetDisplayIdByDisplayName(const char *displayName, NvU32 *displayId) 
     bool is_primary;
   };
 
+#ifdef __APPLE__
+  MonitorEnumInfo info;
+  info.name = displayName;
+  info.handle = nullptr;
+  info.is_primary = false;
+  for (uint32_t i = 0; auto hmon = wsi::enumMonitors(i); i++) {
+    WCHAR name[32] = {};
+    if (!wsi::getDisplayName(hmon, name) || info.name != str::fromws(name))
+      continue;
+    info.handle = hmon;
+    info.is_primary = hmon == wsi::getDefaultMonitor();
+    break;
+  }
+#else
   MonitorEnumInfo info;
   info.name = displayName;
   info.handle = nullptr;
@@ -232,6 +257,8 @@ NvAPI_DISP_GetDisplayIdByDisplayName(const char *displayName, NvU32 *displayId) 
       },
       reinterpret_cast<LPARAM>(&info)
   );
+
+#endif
 
   if (!info.handle)
     return NVAPI_NVIDIA_DEVICE_NOT_FOUND;
@@ -294,6 +321,17 @@ NvAPI_EnumLogicalGPUs(NvLogicalGpuHandle nvGPUHandle[NVAPI_MAX_LOGICAL_GPUS], Nv
     nvGPUHandle[i] = (NvLogicalGpuHandle)devices.object(i).registryID();
   }
 
+  return NVAPI_OK;
+}
+
+NVAPI_INTERFACE
+NvAPI_GetPhysicalGPUsFromLogicalGPU(NvLogicalGpuHandle hLogicalGPU, NvPhysicalGpuHandle hPhysicalGPU[NVAPI_MAX_PHYSICAL_GPUS], NvU32 *pGpuCount) {
+  if (!hLogicalGPU || !hPhysicalGPU || !pGpuCount)
+    return NVAPI_INVALID_ARGUMENT;
+
+  // Logical and physical handles are the same registry id; every logical GPU has one physical GPU.
+  hPhysicalGPU[0] = (NvPhysicalGpuHandle)hLogicalGPU;
+  *pGpuCount = 1;
   return NVAPI_OK;
 }
 
@@ -841,6 +879,8 @@ extern "C" __cdecl void *nvapi_QueryInterface(NvU32 id) {
     return (void *)&NvAPI_EnumPhysicalGPUs;
   case 0x48b3ea59:
     return (void *)&NvAPI_EnumLogicalGPUs;
+  case 0xaea3fa32:
+    return (void *)&NvAPI_GetPhysicalGPUsFromLogicalGPU;
   case 0x34ef9506:
     return (void *)&NvAPI_GetPhysicalGPUsFromDisplay;
   case 0x351da224:

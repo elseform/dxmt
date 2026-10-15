@@ -123,6 +123,10 @@ struct MTL_SHADER_REFLECTION {
   uint32_t NumOutputElement;
   uint32_t ThreadsPerPatch;
   uint32_t ArgumentTableQwords;
+  /** registers of the non-system-value outputs the stage writes */
+  uint32_t OutputRegisterMask;
+  /** registers of the non-system-value inputs a pixel shader declares */
+  uint32_t InputRegisterMask;
 };
 
 #if defined(__LP64__) || defined(_WIN64)
@@ -255,6 +259,11 @@ struct SM50_SHADER_PSO_PIXEL_SHADER_DATA {
   uint32_t unorm_output_reg_mask;
   /** MTLPixelFormat */
   uint32_t pixel_formats[8];
+  /**
+  interpolant registers the pixel shader reads that the stage upstream of it
+  never writes; they read as zero instead of becoming a fragment input
+   */
+  uint32_t unwritten_input_reg_mask;
 };
 
 struct SM50_IA_INPUT_ELEMENT {

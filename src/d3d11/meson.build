@@ -38,7 +38,7 @@ d3d10_src = [
   '../d3d10/d3d10_view.cpp',
 ]
 
-d3d11_ld_args      = ['-L' + windows_native_install_dir] # a nice trick to force relink
+d3d11_ld_args      = windows_native_install_dir != '' ? ['-L' + windows_native_install_dir] : []
 d3d11_link_depends = []
 
 d3d11_dll = shared_library('d3d11', d3d11_src, d3d10_src, d3d11_res,
