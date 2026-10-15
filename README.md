@@ -85,3 +85,21 @@ In commit order:
 Everything else in `release`'s history versus upstream is merging newer
 `3Shain/dxmt` commits into `release`, not new work. The upstream base of each
 release is stated in [CHANGELOG.md](CHANGELOG.md).
+
+## Synthetic tests
+
+Configure with `-Denable_tests=true`, build the test targets, then run
+`meson test -C <build-dir> --no-rebuild --print-errorlogs`. Tests use the
+checked-in synthetic HLSL/DXBC fixtures and the libraries built in this checkout;
+no game assets, engine checkout, mod installation, or external compiler harness
+is required to execute them.
+
+The converter test runs without a Metal device. In a Windows cross build it
+runs against the native Unix-side converter configuration; it is not a PE
+executable and needs no Wine runner. The existing native Metal ownership test
+requires an accessible Metal device.
+
+Converter coverage includes read and unread omitted vertex inputs, unwritten
+pixel inputs, and fully supplied or fully absent packed varying registers.
+Partially supplied packed registers, live stage linkage, application loading,
+and rendering are not covered by these tests.
