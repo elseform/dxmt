@@ -5,7 +5,10 @@
 #ifndef __AIRCONV_H
 #define __AIRCONV_H
 
-#define AIRCONV_VERSION 26
+// Namespace of the on-disk converted shader cache (kDXMTShaderCacheVersion). Raise it whenever the converter
+// output for the same DXBC and variant digest changes: 27 = vertex inputs missing from the input layout are
+// zero-filled in the prologue (before, a cached conversion without it was reused after an upgrade).
+#define AIRCONV_VERSION 27
 
 #ifdef __cplusplus
 #include <string>
