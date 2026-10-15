@@ -1,6 +1,7 @@
 # DXMT
 
-A Metal-based translation layer which allows running 3D applications on macOS using Wine.
+A Metal-based translation layer for Direct3D applications on macOS, with
+separate Wine and native Darwin build configurations.
 
 ## Build
 

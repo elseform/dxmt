@@ -58,7 +58,8 @@ Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
 
 ## gamma-2026.09.27.1 (2026-09-27)
 
-Built for macOS 26 (`MACOSX_DEPLOYMENT_TARGET=26.0`) instead of 15. `winemetal.so` declares macOS 26
+Built for macOS 26 (`MACOSX_DEPLOYMENT_TARGET=26.0`) instead of 15.
+`winemetal.so` declares macOS 26
 and the Metal command shaders in `d3d11.dll` and `d3d12.dll` target
 `macosx26.0`.
 
@@ -94,7 +95,8 @@ Upstream base unchanged since `0.80-gamma`: `3Shain/dxmt` `7c8dee1`
   released. They are now stopped first. This was listed as the fix for the
   startup crash; it was not, and that crash is fixed in anomaly-2026.09.30.
 - **Memory growth and GPU timeout while loading textures created with their
-  data.** Textures created with initial data were staged for upload all at once: the staging
+  data.** Textures created with initial data were staged for upload all at
+  once: the staging
   area grew by the size of the whole level load, stayed allocated for the rest
   of the session, and the first in-game frame timed out on the GPU. Uploads now
   go out in batches of at most 64 MB.
